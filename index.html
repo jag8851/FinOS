@@ -1731,6 +1731,7 @@ function onSignedIn() {
     document.getElementById('wizard-signin-status').textContent = '✓ Signed in!';
     setTimeout(() => wizardNext(), 800);
   } else {
+    applySettings();
     showToast('✓ Signed in');
     buildFireSliders(FIRE_SLIDERS_MAIN, 'fire-main-sliders');
     buildFireSliders(FIRE_SLIDERS_ADV, 'fire-adv-sliders');
@@ -2741,12 +2742,12 @@ async function initApp() {
   }
 
   // No valid token — show sign in prompt
+  applySettings();
   switchTab(settings.defaultTab || 'home');
-  showToast('Please sign in with Google — go to Settings', 'info', 5000);
+  showToast('Please sign in — tap Settings → Sign In', 'info', 5000);
 }
 
 window.addEventListener('load', ()=>{
-  loadAppSettings();
   // Show lock screen by default — user must unlock
   document.getElementById('lock-screen').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
