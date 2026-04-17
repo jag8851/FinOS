@@ -2758,4 +2758,62 @@ window.addEventListener('resize',()=>{
 });
 </script>
 </body>
+<script>
+  // 1. Configuration
+  const CORRECT_PIN = "1234"; // This is the code to unlock
+  let inputPin = "";
+
+  // 2. Select the elements
+  const lockScreen = document.getElementById('lock-screen');
+  const appShell = document.getElementById('app');
+  const dots = document.querySelectorAll('.pin-dot');
+  const errorMsg = document.querySelector('.pin-error-msg');
+
+  // 3. Handle Clicks
+  document.querySelectorAll('.key').forEach(key => {
+    key.addEventListener('click', () => {
+      const val = key.textContent.trim();
+
+      // Handle Delete button
+      if (key.classList.contains('del')) {
+        inputPin = inputPin.slice(0, -1);
+      } 
+      // Handle Numbers (only if we have less than 4)
+      else if (val && !isNaN(val) && inputPin.length < 4) {
+        inputPin += val;
+      }
+
+      updateDots();
+
+      // Check if PIN is complete
+      if (inputPin.length === 4) {
+        if (inputPin === CORRECT_PIN) {
+          // SUCCESS: Hide lock, show app
+          lockScreen.style.display = 'none';
+          appShell.classList.remove('hidden');
+        } else {
+          // FAIL: Shake and reset
+          triggerError();
+        }
+      }
+    });
+  });
+
+  function updateDots() {
+    dots.forEach((dot, i) => {
+      dot.classList.toggle('filled', i < inputPin.length);
+      dot.classList.remove('error');
+    });
+    errorMsg.textContent = "";
+  }
+
+  function triggerError() {
+    dots.forEach(dot => dot.classList.add('error'));
+    errorMsg.textContent = "Incorrect PIN";
+    setTimeout(() => {
+      inputPin = "";
+      updateDots();
+    }, 600);
+  }
+</script>
 </html>
