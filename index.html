@@ -2718,35 +2718,44 @@ async function initApp() {
   buildFireSliders(FIRE_SLIDERS_ADV, 'fire-adv-sliders');
   syncBirthdayToFIRE();
 
-  // Try cached token first
+ // Try cached token
   const cached = sessionStorage.getItem('cf_token');
   if (cached) {
     accessToken = cached;
-    // Verify it's still valid
-    const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    if (test.ok) {
-      const user = await test.json();
-      settings.userEmail = user.email || '';
-      saveAppSettings();
-      applySettings();
-      switchTab(settings.defaultTab || 'home');
-      refreshData();
-      return;
-    } else {
-      // Token expired, clear it
-      accessToken = null;
-      sessionStorage.removeItem('cf_token');
-    }
+    try {
+      const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}});
+      if (test.ok) {
+        const user = await test.json();
+        settings.userEmail = user.email || '';
+        saveAppSettings();
+        applySettings();
+        switchTab(settings.defaultTab || 'home');
+        refreshData();
+        return;
+      }
+    } catch(e) {}
+    // Token expired
+    accessToken = null;
+    sessionStorage.removeItem('cf_token');
   }
 
-  // No valid token — show sign in prompt
+  // No valid token — try silent re-auth first
   applySettings();
   switchTab(settings.defaultTab || 'home');
-  showToast('Please sign in — tap Settings → Sign In', 'info', 5000);
-}
-
+  try {
+    // Try getting a token without showing a popup (uses existing Google session)
+    await new Promise((resolve, reject) => {
+      tokenClient.requestAccessToken({ prompt: '' });
+      // onSignedIn callback will fire if successful
+      setTimeout(resolve, 3000); // give it 3 seconds then give up
+    });
+  } catch(e) {}
+  
+  // If still no token after silent attempt, show manual prompt
+  if (!accessToken) {
+    showToast('Session expired — tap Settings → Sign In', 'info', 6000);
+  }
+   
 window.addEventListener('load', ()=>{
   // Show lock screen by default — user must unlock
   document.getElementById('lock-screen').classList.remove('hidden');
