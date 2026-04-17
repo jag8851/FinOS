@@ -1390,11 +1390,13 @@ tbody td.primary { color: var(--text); font-weight: 500; }
             </div>
           </div>
           <div class="settings-row">
-            <div class="settings-row-info"><div class="settings-row-label">Restore Defaults</div><div class="settings-row-sub">Reset theme and font size</div></div>
-            <button class="btn btn-secondary" onclick="restoreAppDefaults()">Restore</button>
+            <div class="settings-row-info"><div class="settings-row-label">Google Account</div><div class="settings-row-sub" id="google-account-disp">Not signed in</div></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary" onclick="manualSignIn()" id="signin-btn">Sign In</button>
+              <button class="btn btn-danger" onclick="signOut()" id="signout-btn" style="display:none">Sign Out</button>
+            </div>
           </div>
         </div>
-
         <!-- Profile -->
         <div class="settings-section">
           <div class="settings-section-header">Profile</div>
@@ -1415,24 +1417,6 @@ tbody td.primary { color: var(--text); font-weight: 500; }
             </select>
           </div>
         </div>
-
-        <!-- Google / Sheet -->
-        <div class="settings-section">
-          <div class="settings-section-header">Google Integration</div>
-          <div class="settings-row">
-            <div class="settings-row-info"><div class="settings-row-label">Google Account</div><div class="settings-row-sub" id="google-account-disp">Not signed in</div></div>
-            <button class="btn btn-danger" onclick="signOut()" id="signout-btn">Sign Out</button>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-info"><div class="settings-row-label">Sheet ID</div><div class="settings-row-sub" id="sheet-id-disp" style="font-family:'DM Mono',monospace;font-size:0.68rem;word-break:break-all">—</div></div>
-            <button class="btn btn-secondary" onclick="changeSheetId()">Change</button>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-info"><div class="settings-row-label">Initialize Sheet Tabs</div><div class="settings-row-sub">Creates Categories, Rules, Spending, Income tabs if missing</div></div>
-            <button class="btn btn-secondary" onclick="initSheet()">Initialize</button>
-          </div>
-        </div>
-
         <!-- Security -->
         <div class="settings-section">
           <div class="settings-section-header">Security</div>
@@ -1590,7 +1574,11 @@ function applySettings() {
   const sid = document.getElementById('sheet-id-disp');
   if (sid) sid.textContent = settings.sheetId || '—';
   const emailEl = document.getElementById('google-account-disp');
-  if (emailEl) emailEl.textContent = settings.userEmail || 'Not signed in';
+  if (emailEl) emailEl.textContent = accessToken && settings.userEmail ? settings.userEmail : 'Not signed in';
+  const signinBtn  = document.getElementById('signin-btn');
+  const signoutBtn = document.getElementById('signout-btn');
+  if (signinBtn)  signinBtn.style.display  = accessToken ? 'none'        : 'inline-flex';
+  if (signoutBtn) signoutBtn.style.display = accessToken ? 'inline-flex' : 'none';
   updateSidebarAuth();
 }
 function setTheme(t) { settings.theme=t; applySettings(); localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings)); }
@@ -1751,11 +1739,18 @@ function onSignedIn() {
 }
 
 function signOut() {
-  accessToken=null; sessionStorage.removeItem('cf_token');
-  settings.userEmail=''; saveAppSettings(); applySettings();
+  accessToken = null;
+  sessionStorage.removeItem('cf_token');
+  settings.userEmail = '';
+  saveAppSettings();
+  applySettings();
   showToast('Signed out');
 }
 
+async function manualSignIn() {
+  if (!tokenClient) await loadGoogleLibs();
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
 // ── Sheets API helpers ──
 function sheetsUrl(path) {
   return `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/${path}`;
