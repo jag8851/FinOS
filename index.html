@@ -1728,15 +1728,26 @@ async function testToken() {
 }
 
 function onSignedIn() {
-  sessionStorage.setItem('cf_token',accessToken);
-  // Fetch user info
-  fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}})
-    .then(r=>r.json()).then(u=>{
-      settings.userEmail=u.email||'';
-      saveAppSettings(); applySettings();
-    }).catch(()=>{});
-  document.getElementById('wizard-signin-status').textContent='✓ Signed in!';
-  setTimeout(()=>wizardNext(),800);
+  sessionStorage.setItem('cf_token', accessToken);
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  }).then(r => r.json()).then(u => {
+    settings.userEmail = u.email || '';
+    saveAppSettings();
+    applySettings();
+  }).catch(() => {});
+
+  // If we're in the wizard, advance it
+  const wizardOpen = document.getElementById('setup-modal').classList.contains('open');
+  if (wizardOpen) {
+    document.getElementById('wizard-signin-status').textContent = '✓ Signed in!';
+    setTimeout(() => wizardNext(), 800);
+  } else {
+    showToast('✓ Signed in');
+    buildFireSliders(FIRE_SLIDERS_MAIN, 'fire-main-sliders');
+    buildFireSliders(FIRE_SLIDERS_ADV, 'fire-adv-sliders');
+    refreshData();
+  }
 }
 
 function signOut() {
@@ -2695,29 +2706,48 @@ let appInitialized=false;
 
 async function initApp() {
   if (appInitialized) return;
-  appInitialized=true;
+  appInitialized = true;
   loadAppSettings();
-  // Check if first run
+
   if (!settings.sheetId) {
     document.getElementById('setup-modal').classList.add('open');
     await loadGoogleLibs();
     return;
   }
-  // Try to restore session
-  const cached=sessionStorage.getItem('cf_token');
-  if (cached) {
-    accessToken=cached;
-  } else {
-    await loadGoogleLibs();
-  }
+
+  await loadGoogleLibs();
+
   // Build FIRE sliders
-  buildFireSliders(FIRE_SLIDERS_MAIN,'fire-main-sliders');
-  buildFireSliders(FIRE_SLIDERS_ADV,'fire-adv-sliders');
+  buildFireSliders(FIRE_SLIDERS_MAIN, 'fire-main-sliders');
+  buildFireSliders(FIRE_SLIDERS_ADV, 'fire-adv-sliders');
   syncBirthdayToFIRE();
-  // Open default tab
-  switchTab(settings.defaultTab||'home');
-  // Auto-load data
-  if (accessToken&&settings.sheetId) refreshData();
+
+  // Try cached token first
+  const cached = sessionStorage.getItem('cf_token');
+  if (cached) {
+    accessToken = cached;
+    // Verify it's still valid
+    const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (test.ok) {
+      const user = await test.json();
+      settings.userEmail = user.email || '';
+      saveAppSettings();
+      applySettings();
+      switchTab(settings.defaultTab || 'home');
+      refreshData();
+      return;
+    } else {
+      // Token expired, clear it
+      accessToken = null;
+      sessionStorage.removeItem('cf_token');
+    }
+  }
+
+  // No valid token — show sign in prompt
+  switchTab(settings.defaultTab || 'home');
+  showToast('Please sign in with Google — go to Settings', 'info', 5000);
 }
 
 window.addEventListener('load', ()=>{
