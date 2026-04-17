@@ -1610,7 +1610,7 @@ function onBirthdayChange() {
 function updateSidebarAuth() {
   const el=document.getElementById('auth-status-sidebar');
   if (!el) return;
-  el.innerHTML = settings.userEmail
+  el.innerHTML = (accessToken && settings.userEmail)
     ? `✓ ${settings.userEmail.split('@')[0]}<br>${settings.sheetId?'Sheet connected':'No sheet'}`
     : '⚠ Not signed in';
 }
@@ -1757,6 +1757,7 @@ function sheetsUrl(path) {
   return `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/${path}`;
 }
 function sheetsHeaders() {
+  if (!accessToken) throw new Error('Not authenticated — please sign in');
   return {Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'};
 }
 async function sheetsGet(path) {
