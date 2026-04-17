@@ -2745,7 +2745,7 @@ async function initApp() {
   switchTab(settings.defaultTab || 'home');
   showToast('Session expired — go to Settings → Sign In', 'info', 6000);
 }
-   
+   }
 window.addEventListener('load', ()=>{
   // Show lock screen by default — user must unlock
   document.getElementById('lock-screen').classList.remove('hidden');
