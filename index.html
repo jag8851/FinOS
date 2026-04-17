@@ -2712,49 +2712,38 @@ async function initApp() {
   }
 
   await loadGoogleLibs();
-
-  // Build FIRE sliders
-  buildFireSliders(FIRE_SLIDERS_MAIN, 'fire-main-sliders');
-  buildFireSliders(FIRE_SLIDERS_ADV, 'fire-adv-sliders');
+  buildFireSliders(FIRE_SLIDERS_MAIN,'fire-main-sliders');
+  buildFireSliders(FIRE_SLIDERS_ADV,'fire-adv-sliders');
   syncBirthdayToFIRE();
 
- // Try cached token
+  // Try cached token — validate it before doing anything
   const cached = sessionStorage.getItem('cf_token');
   if (cached) {
-    accessToken = cached;
     try {
-      const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}});
+      const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${cached}` }
+      });
       if (test.ok) {
         const user = await test.json();
+        accessToken = cached;
         settings.userEmail = user.email || '';
         saveAppSettings();
         applySettings();
         switchTab(settings.defaultTab || 'home');
-        refreshData();
+        refreshData(); // only called here, after token confirmed valid
         return;
       }
     } catch(e) {}
-    // Token expired
-    accessToken = null;
+    // Token bad — clear it silently
     sessionStorage.removeItem('cf_token');
   }
 
-  // No valid token — try silent re-auth first
+  // No valid token — show UI but don't fetch anything
+  accessToken = null;
   applySettings();
   switchTab(settings.defaultTab || 'home');
-  try {
-    // Try getting a token without showing a popup (uses existing Google session)
-    await new Promise((resolve, reject) => {
-      tokenClient.requestAccessToken({ prompt: '' });
-      // onSignedIn callback will fire if successful
-      setTimeout(resolve, 3000); // give it 3 seconds then give up
-    });
-  } catch(e) {}
-  
-  // If still no token after silent attempt, show manual prompt
-  if (!accessToken) {
-    showToast('Session expired — tap Settings → Sign In', 'info', 6000);
-  }
+  showToast('Session expired — go to Settings → Sign In', 'info', 6000);
+}
    
 window.addEventListener('load', ()=>{
   // Show lock screen by default — user must unlock
