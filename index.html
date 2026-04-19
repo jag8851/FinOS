@@ -1716,6 +1716,7 @@ async function testToken() {
 }
 
 function onSignedIn() {
+  console.log('TOKEN RECEIVED:', accessToken ? accessToken.slice(0,20)+'...' : 'NULL');
   sessionStorage.setItem('cf_token', accessToken);
   fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` }
