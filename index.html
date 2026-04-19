@@ -1610,7 +1610,7 @@ function onBirthdayChange() {
 function updateSidebarAuth() {
   const el=document.getElementById('auth-status-sidebar');
   if (!el) return;
-  el.innerHTML = (accessToken && settings.userEmail)
+  el.innerHTML = settings.userEmail
     ? `✓ ${settings.userEmail.split('@')[0]}<br>${settings.sheetId?'Sheet connected':'No sheet'}`
     : '⚠ Not signed in';
 }
@@ -1757,7 +1757,6 @@ function sheetsUrl(path) {
   return `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/${path}`;
 }
 function sheetsHeaders() {
-  if (!accessToken) throw new Error('Not authenticated — please sign in');
   return {Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'};
 }
 async function sheetsGet(path) {
@@ -2713,14 +2712,21 @@ async function initApp() {
   }
 
   await loadGoogleLibs();
+
+  // Build FIRE sliders
+  buildFireSliders(FIRE_SLIDERS_MAIN, 'fire-main-sliders');
+  buildFireSliders(FIRE_SLIDERS_ADV, 'fire-adv-sliders');
   buildFireSliders(FIRE_SLIDERS_MAIN,'fire-main-sliders');
   buildFireSliders(FIRE_SLIDERS_ADV,'fire-adv-sliders');
   syncBirthdayToFIRE();
 
+ // Try cached token
   // Try cached token — validate it before doing anything
   const cached = sessionStorage.getItem('cf_token');
   if (cached) {
+    accessToken = cached;
     try {
+      const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}});
       const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${cached}` }
       });
@@ -2731,21 +2737,38 @@ async function initApp() {
         saveAppSettings();
         applySettings();
         switchTab(settings.defaultTab || 'home');
+        refreshData();
         refreshData(); // only called here, after token confirmed valid
         return;
       }
     } catch(e) {}
+    // Token expired
+    accessToken = null;
     // Token bad — clear it silently
     sessionStorage.removeItem('cf_token');
   }
 
+  // No valid token — try silent re-auth first
   // No valid token — show UI but don't fetch anything
   accessToken = null;
   applySettings();
   switchTab(settings.defaultTab || 'home');
+  try {
+    // Try getting a token without showing a popup (uses existing Google session)
+    await new Promise((resolve, reject) => {
+      tokenClient.requestAccessToken({ prompt: '' });
+      // onSignedIn callback will fire if successful
+      setTimeout(resolve, 3000); // give it 3 seconds then give up
+    });
+  } catch(e) {}
+  
+  // If still no token after silent attempt, show manual prompt
+  if (!accessToken) {
+    showToast('Session expired — tap Settings → Sign In', 'info', 6000);
+  }
   showToast('Session expired — go to Settings → Sign In', 'info', 6000);
 }
-   }
+
 window.addEventListener('load', ()=>{
   // Show lock screen by default — user must unlock
   document.getElementById('lock-screen').classList.remove('hidden');
@@ -2758,62 +2781,4 @@ window.addEventListener('resize',()=>{
 });
 </script>
 </body>
-<script>
-  // 1. Configuration
-  const CORRECT_PIN = "1234"; // This is the code to unlock
-  let inputPin = "";
-
-  // 2. Select the elements
-  const lockScreen = document.getElementById('lock-screen');
-  const appShell = document.getElementById('app');
-  const dots = document.querySelectorAll('.pin-dot');
-  const errorMsg = document.querySelector('.pin-error-msg');
-
-  // 3. Handle Clicks
-  document.querySelectorAll('.key').forEach(key => {
-    key.addEventListener('click', () => {
-      const val = key.textContent.trim();
-
-      // Handle Delete button
-      if (key.classList.contains('del')) {
-        inputPin = inputPin.slice(0, -1);
-      } 
-      // Handle Numbers (only if we have less than 4)
-      else if (val && !isNaN(val) && inputPin.length < 4) {
-        inputPin += val;
-      }
-
-      updateDots();
-
-      // Check if PIN is complete
-      if (inputPin.length === 4) {
-        if (inputPin === CORRECT_PIN) {
-          // SUCCESS: Hide lock, show app
-          lockScreen.style.display = 'none';
-          appShell.classList.remove('hidden');
-        } else {
-          // FAIL: Shake and reset
-          triggerError();
-        }
-      }
-    });
-  });
-
-  function updateDots() {
-    dots.forEach((dot, i) => {
-      dot.classList.toggle('filled', i < inputPin.length);
-      dot.classList.remove('error');
-    });
-    errorMsg.textContent = "";
-  }
-
-  function triggerError() {
-    dots.forEach(dot => dot.classList.add('error'));
-    errorMsg.textContent = "Incorrect PIN";
-    setTimeout(() => {
-      inputPin = "";
-      updateDots();
-    }, 600);
-  }
-</script>
 </html>
