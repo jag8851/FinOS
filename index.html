@@ -2725,12 +2725,10 @@ async function initApp() {
     hasToken: !!sessionStorage.getItem('cf_token'),
     timestamp: new Date().toISOString()
   });
-   
- // Try cached token
- // Replace your loose code block with this:
-async function initializeSession() {
 
-  // Try cached token — validate it before doing anything
+} // <-- this closes initApp
+
+async function initializeSession() {
   const cached = sessionStorage.getItem('cf_token');
   if (cached) {
     accessToken = cached;
@@ -2740,7 +2738,6 @@ async function initializeSession() {
       });
       if (test.ok) {
         const user = await test.json();
-        accessToken = cached;
         settings.userEmail = user.email || '';
         saveAppSettings();
         applySettings();
@@ -2749,19 +2746,16 @@ async function initializeSession() {
         return;
       }
     } catch(e) {}
-
-    // Token expired — clear it silently
     accessToken = null;
     sessionStorage.removeItem('cf_token');
   }
 
-  // No valid token — show UI but don't fetch anything
   accessToken = null;
   applySettings();
   switchTab(settings.defaultTab || 'home');
 
   try {
-    await new Promise((resolve, reject) => {
+    await new Promise((resolve) => {
       tokenClient.requestAccessToken({ prompt: '' });
       setTimeout(resolve, 3000);
     });
@@ -2770,11 +2764,7 @@ async function initializeSession() {
   if (!accessToken) {
     showToast('Session expired — tap Settings → Sign In', 'info', 6000);
   }
-  // NOTE: You had two showToast calls — removed the duplicate below
 }
-
-// Then call it:
-initializeSession();
 
 window.addEventListener('load', () => {
   document.getElementById('lock-screen').classList.remove('hidden');
