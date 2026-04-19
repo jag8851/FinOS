@@ -2716,8 +2716,6 @@ async function initApp() {
   // Build FIRE sliders
   buildFireSliders(FIRE_SLIDERS_MAIN, 'fire-main-sliders');
   buildFireSliders(FIRE_SLIDERS_ADV, 'fire-adv-sliders');
-  buildFireSliders(FIRE_SLIDERS_MAIN,'fire-main-sliders');
-  buildFireSliders(FIRE_SLIDERS_ADV,'fire-adv-sliders');
   syncBirthdayToFIRE();
 
     // --- ADD THIS LOG TO VERIFY ---
@@ -2725,9 +2723,9 @@ async function initApp() {
     hasToken: !!sessionStorage.getItem('cf_token'),
     timestamp: new Date().toISOString()
   });
-
-} // <-- this closes initApp
-
+initializeSession();
+}
+   
 async function initializeSession() {
   const cached = sessionStorage.getItem('cf_token');
   if (cached) {
