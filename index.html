@@ -2727,12 +2727,17 @@ async function initApp() {
   });
    
  // Try cached token
+ // Replace your loose code block with this:
+async function initializeSession() {
+
   // Try cached token — validate it before doing anything
   const cached = sessionStorage.getItem('cf_token');
   if (cached) {
     accessToken = cached;
     try {
-      const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}});
+      const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
       if (test.ok) {
         const user = await test.json();
         accessToken = cached;
@@ -2741,47 +2746,37 @@ async function initApp() {
         applySettings();
         switchTab(settings.defaultTab || 'home');
         refreshData();
-        refreshData(); // only called here, after token confirmed valid
         return;
       }
     } catch(e) {}
-    // Token expired
+
+    // Token expired — clear it silently
     accessToken = null;
-    // Token bad — clear it silently
     sessionStorage.removeItem('cf_token');
   }
 
-  // No valid token — try silent re-auth first
   // No valid token — show UI but don't fetch anything
   accessToken = null;
   applySettings();
   switchTab(settings.defaultTab || 'home');
+
   try {
-    // Try getting a token without showing a popup (uses existing Google session)
     await new Promise((resolve, reject) => {
       tokenClient.requestAccessToken({ prompt: '' });
-      // onSignedIn callback will fire if successful
-      setTimeout(resolve, 3000); // give it 3 seconds then give up
+      setTimeout(resolve, 3000);
     });
   } catch(e) {}
-  
-  // If still no token after silent attempt, show manual prompt
+
   if (!accessToken) {
     showToast('Session expired — tap Settings → Sign In', 'info', 6000);
   }
-  showToast('Session expired — go to Settings → Sign In', 'info', 6000);
+  // NOTE: You had two showToast calls — removed the duplicate below
 }
 
-window.addEventListener('load', ()=>{
-  // Show lock screen by default — user must unlock
+// Then call it:
+initializeSession();
+
+window.addEventListener('load', () => {
   document.getElementById('lock-screen').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
 });
-
-window.addEventListener('resize',()=>{
-  if (nwChartInst) nwChartInst.update();
-  if (fireChartInst) fireChartInst.update();
-});
-</script>
-</body>
-</html>
