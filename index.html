@@ -2727,7 +2727,6 @@ async function initApp() {
     accessToken = cached;
     try {
       const test = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}});
-      });
       if (test.ok) {
         const user = await test.json();
         accessToken = cached;
