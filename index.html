@@ -2720,6 +2720,12 @@ async function initApp() {
   buildFireSliders(FIRE_SLIDERS_ADV,'fire-adv-sliders');
   syncBirthdayToFIRE();
 
+    // --- ADD THIS LOG TO VERIFY ---
+  console.log('Verifying cached token...', {
+    hasToken: !!sessionStorage.getItem('cf_token'),
+    timestamp: new Date().toISOString()
+  });
+   
  // Try cached token
   // Try cached token — validate it before doing anything
   const cached = sessionStorage.getItem('cf_token');
