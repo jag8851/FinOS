@@ -1463,7 +1463,7 @@ tbody td.primary { color: var(--text); font-weight: 500; }
 
 <!-- ═══ JAVASCRIPT ═══ -->
 <script>
-console.log('SCRIPT VERSION: 2.1');
+console.log('SCRIPT VERSION: 2.11');
 // ═══════════════════════════════════════════════════
 // CONFIG — paste your Google OAuth Client ID here
 // ═══════════════════════════════════════════════════
@@ -1830,8 +1830,13 @@ const nw = {values:[]};
     processNetWorth();
     showToast('Data refreshed');
     // Re-render active tab
-    const active=document.querySelector('.nav-item.active')?.dataset.tab;
-    if (active) switchTab(active);
+   const active=document.querySelector('.nav-item.active')?.dataset.tab;
+      if (active==='home')     renderNetWorthUI();
+      if (active==='spending') renderSpending();
+      if (active==='income')   renderIncome();
+      if (active==='trends')   renderTrends();
+      if (active==='fire')     renderFIRE();
+      if (active==='heatmap')  renderHeatmap();
   } catch(e) {
     showToast('Failed to load data: '+e.message,'error');
   } finally {
