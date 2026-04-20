@@ -1803,9 +1803,10 @@ async function refreshData() {
   document.getElementById('refresh-btn').innerHTML='<div class="spinner" style="width:14px;height:14px;border-width:2px"></div>';
   try {
     const data=await batchGetSheets([
-      'Spending!A:J','Income!A:H','Rules!A:C','Categories!A:B','Net Worth!A:100'
-    ]);
-    const [sp,inc,rules,cats,nw]=data.valueRanges;
+  'Spending!A:J','Income!A:H','Rules!A:C','Categories!A:B'
+]);
+    const [sp,inc,rules,cats]=data.valueRanges;
+const nw = {values:[]};
     cache.spending     = parseRows(sp?.values,[]);
     cache.income       = parseRows(inc?.values,[]);
     cache.rules        = parseRows(rules?.values,[]);
