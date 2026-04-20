@@ -1463,7 +1463,7 @@ tbody td.primary { color: var(--text); font-weight: 500; }
 
 <!-- ═══ JAVASCRIPT ═══ -->
 <script>
-console.log('SCRIPT VERSION: 1.33');
+console.log('SCRIPT VERSION: 2.0!');
 // ═══════════════════════════════════════════════════
 // CONFIG — paste your Google OAuth Client ID here
 // ═══════════════════════════════════════════════════
@@ -1877,7 +1877,7 @@ function renderNetWorth() {
     document.getElementById('home-loading').style.display='flex';
     document.getElementById('home-data').style.display='none';
     document.getElementById('home-empty').style.display='none';
-    refreshData().then(()=>renderNetWorthUI());
+    refreshData();
     return;
   }
   renderNetWorthUI();
