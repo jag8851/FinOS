@@ -1463,7 +1463,7 @@ tbody td.primary { color: var(--text); font-weight: 500; }
 
 <!-- ═══ JAVASCRIPT ═══ -->
 <script>
-console.log('SCRIPT VERSION: 2.0!');
+console.log('SCRIPT VERSION: 2.1');
 // ═══════════════════════════════════════════════════
 // CONFIG — paste your Google OAuth Client ID here
 // ═══════════════════════════════════════════════════
@@ -1471,6 +1471,12 @@ const CLIENT_ID = '397118334581-2p01ct79a0451cca4h0tpbvpfmfi1ucm.apps.googleuser
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const DISCOVERY = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
 
+let apiCallCount = 0;
+const API_CALL_LIMIT = 20;
+
+function resetApiCounter() {
+  apiCallCount = 0;
+}
 // ═══════════════════════════════════════════════════
 // PIN — djb2 hash + XOR
 // ═══════════════════════════════════════════════════
@@ -1783,9 +1789,17 @@ async function sheetsPut(path,body) {
 }
 
 async function batchGetSheets(ranges) {
+  apiCallCount++;
+  if (apiCallCount > API_CALL_LIMIT) {
+    showToast('Too many API calls — something went wrong. Reloading...', 'error', 3000);
+    setTimeout(() => location.reload(), 3000);
+    throw new Error('API call limit exceeded');
+  }
   const q=ranges.map(r=>`ranges=${encodeURIComponent(r)}`).join('&');
   const resp=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values:batchGet?${q}`,{headers:sheetsHeaders()});
+  if (resp.status===429) { showToast('Too many requests — please wait a moment','error',4000); throw new Error('Rate limited'); }
   if (!resp.ok) throw new Error(`Sheets API error: ${resp.status}`);
+  resetApiCounter();
   return resp.json();
 }
 
