@@ -882,10 +882,20 @@ tbody td.primary { color: var(--text); font-weight: 500; }
         <div id="wizard-signin-status" style="margin-top:12px;font-size:0.78rem;color:var(--text3)"></div>
       </div>
 
-      <!-- Step 2: Sheet ID -->
-      <div class="wizard-step" id="wstep2">
-        <h3 style="font-size:1.1rem;margin-bottom:8px">Connect your Google Sheet</h3>
-        <p style="color:var(--text2);font-size:0.85rem;line-height:1.7;margin-bottom:16px">Paste the Sheet ID from your Google Sheet's URL:<br><code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:0.78rem">docs.google.com/spreadsheets/d/<strong style="color:var(--accent)">SHEET_ID_HERE</strong>/edit</code></p>
+            <!-- Step 2: Sheet ID -->
+<div class="wizard-step" id="wstep2">
+  <h3 style="font-size:1.1rem;margin-bottom:8px">Connect your Google Sheet</h3>
+  <p style="color:var(--text2);font-size:0.85rem;line-height:1.7;margin-bottom:16px">Create a new sheet or connect an existing one.</p>
+  <button class="btn btn-primary" onclick="createNewSheet()" id="create-sheet-btn" style="margin-bottom:12px">
+    ✨ Create New Sheet
+  </button>
+  <p style="color:var(--text3);font-size:0.72rem;margin-bottom:12px">— or enter an existing Sheet ID —</p>
+  <div class="form-group">
+    <label class="form-label">Sheet ID</label>
+    <input class="form-input" id="wizard-sheet-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" style="font-family:'DM Mono',monospace;font-size:0.78rem;">
+  </div>
+  <div id="create-sheet-status" style="margin-top:10px;font-size:0.78rem;color:var(--text3)"></div>
+</div>   
         <div class="form-group">
           <label class="form-label">Sheet ID</label>
           <input class="form-input" id="wizard-sheet-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" style="font-family:'DM Mono',monospace;font-size:0.78rem;">
@@ -1458,7 +1468,7 @@ console.log('SCRIPT VERSION: 1.33');
 // CONFIG — paste your Google OAuth Client ID here
 // ═══════════════════════════════════════════════════
 const CLIENT_ID = '397118334581-2p01ct79a0451cca4h0tpbvpfmfi1ucm.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 const DISCOVERY = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
 
 // ═══════════════════════════════════════════════════
@@ -2643,7 +2653,44 @@ function closeSetupWizard() {
   refreshData();
   switchTab(settings.defaultTab||'home');
 }
-
+async function createNewSheet() {
+  if (!accessToken) { showToast('Sign in first', 'error'); return; }
+  const btn = document.getElementById('create-sheet-btn');
+  const status = document.getElementById('create-sheet-status');
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+  status.textContent = '';
+  try {
+    // Create a new Google Sheet via Drive API
+    const resp = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: '🌱 Coastline Finance',
+        mimeType: 'application/vnd.google-apps.spreadsheet'
+      })
+    });
+    const file = await resp.json();
+    if (!file.id) throw new Error('No file ID returned');
+    settings.sheetId = file.id;
+    document.getElementById('wizard-sheet-id').value = file.id;
+    status.textContent = '✓ Sheet created! Click Next to initialize tabs.';
+    status.style.color = 'var(--accent)';
+    saveAppSettings();
+    // Auto-initialize the sheet tabs
+    await initSheet();
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+    status.style.color = 'var(--danger)';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Create New Sheet';
+  }
+}
+   
 async function initSheet() {
   if (!accessToken||!settings.sheetId) { showToast('Connect Google and enter Sheet ID first','error'); return; }
   const btn=document.getElementById('init-sheet-btn')||document.querySelector('[onclick="initSheet()"]');
