@@ -467,7 +467,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.2</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -1116,47 +1116,132 @@ let nwChartInst=null,assetDonutInst=null,nwRange=12;
 function processNetWorth(){
   const raw=cache.netWorthRaw;
   if(!raw||raw.length<2){cache.netWorth=null;return;}
-  const headers=raw[0];
-  const rows=raw.slice(1);
 
-  // Build month->colIndex map robustly (trim whitespace, first occurrence wins)
-  const monthColMap={};
-  headers.forEach((h,i)=>{
-    if(!h)return;
-    const hs=String(h).trim();
-    if(/^\d{4}-\d{2}$/.test(hs)&&!(hs in monthColMap))monthColMap[hs]=i;
-  });
-  const months=Object.keys(monthColMap).sort();
+  // ── Orientation-agnostic parser ──────────────────────────────────────
+  // Scan every cell to find where month headers (YYYY-MM) live.
+  // They may be in row 0 (columns layout) or col 0 (rows layout).
+  // Also scan every cell to find label strings like "Net Worth".
+  // Then read values from the perpendicular axis.
 
-  function findRow(label){
-    const ll=label.toLowerCase().trim();
-    return rows.find(r=>r[0]&&String(r[0]).trim().toLowerCase()===ll);
-  }
-  function getVals(label){
-    const r=findRow(label);if(!r)return{};
-    const res={};
-    months.forEach(m=>{
-      const colIdx=monthColMap[m];
-      if(colIdx===undefined)return;
-      res[m]=parseAmount(r[colIdx]);
+  const MONTH_RE=/^\d{4}-\d{2}$/;
+  const TARGET_LABELS=['net worth','assets','liabilities','savings','investments',
+                       'taxable','tax-deferred','tax-free'];
+
+  // Find all month positions: {month, row, col}
+  let monthPositions=[];
+  raw.forEach((row,ri)=>{
+    row.forEach((cell,ci)=>{
+      if(cell&&MONTH_RE.test(String(cell).trim()))
+        monthPositions.push({m:String(cell).trim(),ri,ci});
     });
-    return res;
-  }
+  });
+  if(!monthPositions.length){cache.netWorth=null;return;}
 
-  cache.netWorth={
-    months,
-    netWorth:getVals('Net Worth'),
-    assets:getVals('Assets'),
-    liabilities:getVals('Liabilities'),
-    savings:getVals('Savings'),
-    investments:getVals('Investments'),
-    taxable:getVals('Taxable'),
-    taxDeferred:getVals('Tax-Deferred'),
-    taxFree:getVals('Tax-Free'),
-    allRows:rows,
-    allHeaders:headers,
-    monthColMap
-  };
+  // Determine layout: are months mostly in the same row or same col?
+  const rowCounts={},colCounts={};
+  monthPositions.forEach(({ri,ci})=>{rowCounts[ri]=(rowCounts[ri]||0)+1;colCounts[ci]=(colCounts[ci]||0)+1;});
+  const topRow=Object.entries(rowCounts).sort((a,b)=>b[1]-a[1])[0];
+  const topCol=Object.entries(colCounts).sort((a,b)=>b[1]-a[1])[0];
+  const monthsInRow = topRow[1] >= topCol[1]; // true = months are column headers
+
+  let months=[], monthColMap={};
+
+  if(monthsInRow){
+    // Months spread across a header row → data rows have labels in some col
+    const headerRowIdx=parseInt(topRow[0]);
+    const headerRow=raw[headerRowIdx]||[];
+    // Find which column has the row labels (look for TARGET_LABELS in any col)
+    let labelCol=0;
+    outer:for(let ci=0;ci<(raw[headerRowIdx+1]||[]).length;ci++){
+      for(let ri=headerRowIdx+1;ri<Math.min(raw.length,headerRowIdx+20);ri++){
+        const cell=String(raw[ri][ci]||'').trim().toLowerCase();
+        if(TARGET_LABELS.includes(cell)){labelCol=ci;break outer;}
+      }
+    }
+    // Build monthColMap from the header row
+    headerRow.forEach((cell,ci)=>{
+      const hs=String(cell||'').trim();
+      if(MONTH_RE.test(hs)&&!(hs in monthColMap))monthColMap[hs]=ci;
+    });
+    months=Object.keys(monthColMap).sort();
+
+    // Build lookup: label -> row array
+    const labelRowMap={};
+    for(let ri=headerRowIdx+1;ri<raw.length;ri++){
+      const row=raw[ri];
+      const lbl=String(row[labelCol]||'').trim().toLowerCase();
+      if(lbl)labelRowMap[lbl]=row;
+    }
+
+    function getVals(label){
+      const r=labelRowMap[label.toLowerCase().trim()];if(!r)return{};
+      const res={};
+      months.forEach(m=>{const ci=monthColMap[m];if(ci!==undefined)res[m]=parseAmount(r[ci]);});
+      return res;
+    }
+    function getAllRows(){return Object.entries(labelRowMap).map(([lbl,row])=>({label:lbl,row,labelCol}));}
+
+    cache.netWorth={
+      months,monthColMap,labelCol,headerRowIdx,
+      netWorth:getVals('Net Worth'),
+      assets:getVals('Assets'),
+      liabilities:getVals('Liabilities'),
+      savings:getVals('Savings'),
+      investments:getVals('Investments'),
+      taxable:getVals('Taxable'),
+      taxDeferred:getVals('Tax-Deferred'),
+      taxFree:getVals('Tax-Free'),
+      allRows:raw.slice(headerRowIdx+1),
+      allHeaders:raw[headerRowIdx]||[],
+      labelColIdx:labelCol
+    };
+  } else {
+    // Months down a label column → data columns have labels in a header row
+    const headerColIdx=parseInt(topCol[0]);
+    // Find label row
+    let labelRow=0;
+    outer2:for(let ri=0;ri<Math.min(raw.length,10);ri++){
+      const row=raw[ri]||[];
+      for(let ci=0;ci<row.length;ci++){
+        if(TARGET_LABELS.includes(String(row[ci]||'').trim().toLowerCase())){labelRow=ri;break outer2;}
+      }
+    }
+    // months are in headerColIdx column, going down from labelRow+1
+    const monthRowMap={};
+    raw.forEach((row,ri)=>{
+      const cell=String(row[headerColIdx]||'').trim();
+      if(MONTH_RE.test(cell))monthRowMap[cell]=ri;
+    });
+    months=Object.keys(monthRowMap).sort();
+    // labels are across labelRow
+    const labelRowArr=raw[labelRow]||[];
+    const labelColMap={};
+    labelRowArr.forEach((cell,ci)=>{
+      const lbl=String(cell||'').trim().toLowerCase();
+      if(lbl&&!labelColMap[lbl])labelColMap[lbl]=ci;
+    });
+
+    function getValsT(label){
+      const ci=labelColMap[label.toLowerCase().trim()];if(ci===undefined)return{};
+      const res={};
+      months.forEach(m=>{const ri=monthRowMap[m];if(ri!==undefined)res[m]=parseAmount((raw[ri]||[])[ci]);});
+      return res;
+    }
+    cache.netWorth={
+      months,monthColMap:monthRowMap,
+      netWorth:getValsT('Net Worth'),
+      assets:getValsT('Assets'),
+      liabilities:getValsT('Liabilities'),
+      savings:getValsT('Savings'),
+      investments:getValsT('Investments'),
+      taxable:getValsT('Taxable'),
+      taxDeferred:getValsT('Tax-Deferred'),
+      taxFree:getValsT('Tax-Free'),
+      allRows:raw,
+      allHeaders:labelRowArr,
+      labelColIdx:headerColIdx
+    };
+  }
 }
 
 function renderNetWorth(){
@@ -1232,11 +1317,12 @@ function drawAssetDonut(){
   const nw=cache.netWorth;if(!nw||!nw.months.length)return;
   const last=nw.months[nw.months.length-1];
   const lastColIdx=nw.monthColMap?nw.monthColMap[last]:nw.allHeaders.indexOf(last);
+  const labelCol=nw.labelColIdx||0;
   const rows=nw.allRows;
   let inAssets=false,items=[];
   const skipLabels=new Set(['assets','liabilities','net worth','savings','investments','taxable','tax-deferred','tax-free']);
   for(const row of rows){
-    const label=(row[0]||'').trim();
+    const label=(String(row[labelCol]||'')).trim();
     const ll=label.toLowerCase();
     if(ll==='assets'){inAssets=true;continue;}
     if(ll==='liabilities'||ll==='net worth'){inAssets=false;}
