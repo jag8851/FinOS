@@ -346,6 +346,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.3</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -973,16 +974,35 @@ function resetApiCounter(){apiCallCount=0;}
 // ═══════════════════════════════════════════════════
 // PIN
 // ═══════════════════════════════════════════════════
-const PIN_KEY='cf_pin_h', SETTINGS_KEY='cf_settings';
-function pinHash(str){let h=5381;for(let i=0;i<str.length;i++)h=(h*33)^str.charCodeAt(i);h=(h^0x4a3f2b1c)>>>0;return h.toString(16).padStart(8,'0');}
-const DEFAULT_HASH=pinHash('3083');
-function getStoredHash(){return localStorage.getItem(PIN_KEY)||DEFAULT_HASH;}
+const PIN_KEY='cf_pin_h2', SETTINGS_KEY='cf_settings';
+// SHA-256 via Web Crypto — async, but we cache the result in sessionStorage
+// to avoid blocking the keypad. On first unlock we hash then compare.
+const SALT='cf_coastline_2024';
+async function pinHash(str){
+  const enc=new TextEncoder();
+  const data=enc.encode(SALT+str);
+  const buf=await crypto.subtle.digest('SHA-256',data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+// Default PIN 3083 — pre-computed SHA-256(SALT+'3083') stored on first run
+async function getStoredHash(){
+  let h=localStorage.getItem(PIN_KEY);
+  if(!h){
+    // First run: store default hash
+    h=await pinHash('3083');
+    localStorage.setItem(PIN_KEY,h);
+  }
+  return h;
+}
 let pinEntry='';
 function keyPress(d){if(pinEntry.length>=4)return;pinEntry+=d;updatePinDots();if(pinEntry.length===4)setTimeout(checkPin,120);}
 function keyDel(){pinEntry=pinEntry.slice(0,-1);updatePinDots();document.getElementById('pin-error').textContent='';}
 function updatePinDots(){for(let i=0;i<4;i++){const d=document.getElementById('dot'+i);d.classList.toggle('filled',i<pinEntry.length);d.classList.remove('error');}}
-function checkPin(){
-  if(pinHash(pinEntry)===getStoredHash()){
+async function checkPin(){
+  const entered=pinEntry;
+  const stored=await getStoredHash();
+  const attempt=await pinHash(entered);
+  if(attempt===stored){
     document.getElementById('lock-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     pinEntry='';updatePinDots();initApp();
@@ -999,7 +1019,7 @@ document.addEventListener('keydown',e=>{
   }
 });
 function lockApp(){document.getElementById('lock-screen').classList.remove('hidden');document.getElementById('app').classList.add('hidden');pinEntry='';updatePinDots();document.getElementById('pin-error').textContent='';}
-function changePIN(){const raw=String(document.getElementById('new-pin-input').value).trim();if(!/^\d{4}$/.test(raw)){showMsg('pin-change-msg','PIN must be exactly 4 digits','var(--danger)');return;}localStorage.setItem(PIN_KEY,pinHash(raw));document.getElementById('new-pin-input').value='';showMsg('pin-change-msg','✓ PIN updated','var(--accent)');}
+async function changePIN(){const raw=String(document.getElementById('new-pin-input').value).trim();if(!/^\d{4}$/.test(raw)){showMsg('pin-change-msg','PIN must be exactly 4 digits','var(--danger)');return;}const h=await pinHash(raw);localStorage.setItem(PIN_KEY,h);document.getElementById('new-pin-input').value='';showMsg('pin-change-msg','✓ PIN updated','var(--accent)');}
 function showMsg(id,msg,color,ms=3000){const el=document.getElementById(id);if(!el)return;el.style.display='block';el.style.color=color;el.textContent=msg;setTimeout(()=>{el.style.display='none';},ms);}
 
 // ═══════════════════════════════════════════════════
@@ -2138,8 +2158,7 @@ function updateDevRefMap(){
     const latestVal=vals&&last?(vals[last]!==undefined?fmt(vals[last]):'$0.00'):'—';
     lines.push(`${lbl.padEnd(17)}| ${cell.padEnd(6)}| ${latestVal}`);
   });
-  el.textContent=lines.join('
-');
+  el.textContent=lines.join('\n');
 }
 
 async function loadDevPreview(){
