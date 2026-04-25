@@ -467,7 +467,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.2</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.3</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -740,29 +740,31 @@ tbody td.primary{color:var(--text);font-weight:500;}
 
       <!-- ═══ FIRE CALCULATOR ═══ -->
       <div id="tab-fire" class="tab-panel">
-        <div class="fire-main-wrap">
-          <!-- Collapse toggle -->
-          <div class="fire-side-toggle" id="fire-side-toggle" onclick="toggleFireSide()" title="Toggle panel">◀</div>
-          <!-- Left panel -->
-          <div style="display:flex;flex-direction:column;gap:14px;transition:all 0.3s;overflow:hidden" id="fire-side-panel" class="fire-side-panel">
-            <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;padding-left:0;margin-right:16px">
-              <div class="card">
-                <div class="card-header"><span class="card-title">Your Details</span></div>
-                <div class="card-body" id="fire-main-sliders"></div>
+        <div style="display:flex;gap:0;align-items:flex-start">
+          <!-- Left panel (collapsible) -->
+          <div id="fire-side-panel" style="width:292px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;margin-right:0;transition:width 0.3s,opacity 0.3s;overflow:hidden;opacity:1">
+            <div class="card" style="width:280px">
+              <div class="card-header" style="justify-content:space-between">
+                <span class="card-title">Parameters</span>
+                <!-- Toggle button attached to card header right edge -->
+                <button id="fire-side-toggle" onclick="toggleFireSide()" title="Collapse panel" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);color:var(--text3);width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;transition:all 0.15s;flex-shrink:0;">◀</button>
               </div>
-              <div class="card">
-                <div class="card-header" style="cursor:pointer" onclick="toggleFireAdv()">
-                  <span class="card-title">Advanced</span>
-                  <span id="fire-adv-arrow" style="color:var(--accent);font-size:0.8rem">▸</span>
-                </div>
-                <div id="fire-adv-body" style="display:none">
-                  <div class="card-body" id="fire-adv-sliders"></div>
-                </div>
+              <div class="card-body" id="fire-main-sliders"></div>
+            </div>
+            <div class="card" style="width:280px">
+              <div class="card-header" style="cursor:pointer" onclick="toggleFireAdv()">
+                <span class="card-title">Advanced</span>
+                <span id="fire-adv-arrow" style="color:var(--accent);font-size:0.8rem">▸</span>
+              </div>
+              <div id="fire-adv-body" style="display:none">
+                <div class="card-body" id="fire-adv-sliders"></div>
               </div>
             </div>
           </div>
+          <!-- Collapsed-state toggle (shown only when panel is hidden) -->
+          <button id="fire-side-toggle-collapsed" onclick="toggleFireSide()" title="Expand panel" style="display:none;flex-shrink:0;width:28px;align-self:stretch;background:var(--surface2);border:1px solid var(--border);border-right:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);color:var(--text3);font-size:0.75rem;cursor:pointer;transition:all 0.15s;writing-mode:vertical-rl;padding:12px 0;margin-right:0;">▶ Parameters</button>
           <!-- Right outputs -->
-          <div style="flex:1;display:flex;flex-direction:column;gap:14px;min-width:0">
+          <div style="flex:1;display:flex;flex-direction:column;gap:14px;min-width:0;margin-left:16px" id="fire-right-panel">
             <div id="fire-status-card"></div>
             <div id="fire-progress-wrap"></div>
             <div class="stats-grid" id="fire-stats-grid" style="grid-template-columns:repeat(2,1fr)"></div>
@@ -923,6 +925,30 @@ tbody td.primary{color:var(--text);font-weight:500;}
           <div class="settings-row">
             <div class="settings-row-info"><div class="settings-row-label">Reset Local Data</div><div class="settings-row-sub">Clears PIN, settings (does NOT touch Google Sheet)</div></div>
             <button class="btn btn-danger" onclick="resetLocalData()">Reset</button>
+          </div>
+        </div>
+        <!-- DEVELOPER SECTION -->
+        <div class="settings-section" id="dev-section">
+          <div class="settings-section-header" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleDevSection()">
+            <span>Developer / Debug</span>
+            <span id="dev-arrow" style="font-size:0.8rem">▸</span>
+          </div>
+          <div id="dev-body" style="display:none">
+            <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+              <div class="settings-row-label">Sheet Reference Map</div>
+              <div class="settings-row-sub">Detected row labels and their sheet positions from the last data load.</div>
+              <div id="dev-ref-map" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px;width:100%;line-height:2;white-space:pre-wrap">Load data first, then open this panel.</div>
+            </div>
+            <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+              <div style="display:flex;align-items:center;gap:10px;width:100%">
+                <div class="settings-row-label" style="flex:1">Raw Sheet Preview</div>
+                <button class="btn btn-secondary" onclick="loadDevPreview()" style="font-size:0.72rem;padding:5px 12px">Load Preview</button>
+              </div>
+              <div class="settings-row-sub">First 12 rows × 30 cols of your Net Worth sheet.</div>
+              <div id="dev-preview-wrap" style="width:100%;overflow-x:auto">
+                <div id="dev-preview" style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px;white-space:pre;min-height:60px">Click "Load Preview" to fetch.</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1117,131 +1143,56 @@ function processNetWorth(){
   const raw=cache.netWorthRaw;
   if(!raw||raw.length<2){cache.netWorth=null;return;}
 
-  // ── Orientation-agnostic parser ──────────────────────────────────────
-  // Scan every cell to find where month headers (YYYY-MM) live.
-  // They may be in row 0 (columns layout) or col 0 (rows layout).
-  // Also scan every cell to find label strings like "Net Worth".
-  // Then read values from the perpendicular axis.
+  // Known layout: row 0 = headers (A1:C1 blank, months start at D1 = index 3)
+  //               col C = index 2 = row labels ("Net Worth", "Assets", etc.)
+  //               values at intersection of label row × month col
+  const headerRow=raw[0]||[];
+  const LABEL_COL=2; // column C
 
-  const MONTH_RE=/^\d{4}-\d{2}$/;
-  const TARGET_LABELS=['net worth','assets','liabilities','savings','investments',
-                       'taxable','tax-deferred','tax-free'];
-
-  // Find all month positions: {month, row, col}
-  let monthPositions=[];
-  raw.forEach((row,ri)=>{
-    row.forEach((cell,ci)=>{
-      if(cell&&MONTH_RE.test(String(cell).trim()))
-        monthPositions.push({m:String(cell).trim(),ri,ci});
-    });
+  // Build month -> col index from row 0, starting at col 3 (D)
+  const monthColMap={};
+  headerRow.forEach((cell,ci)=>{
+    if(ci<3)return; // skip A,B,C
+    const hs=String(cell||'').trim();
+    if(/^\d{4}-\d{2}$/.test(hs)&&!(hs in monthColMap))monthColMap[hs]=ci;
   });
-  if(!monthPositions.length){cache.netWorth=null;return;}
+  const months=Object.keys(monthColMap).sort();
+  if(!months.length){cache.netWorth=null;return;}
 
-  // Determine layout: are months mostly in the same row or same col?
-  const rowCounts={},colCounts={};
-  monthPositions.forEach(({ri,ci})=>{rowCounts[ri]=(rowCounts[ri]||0)+1;colCounts[ci]=(colCounts[ci]||0)+1;});
-  const topRow=Object.entries(rowCounts).sort((a,b)=>b[1]-a[1])[0];
-  const topCol=Object.entries(colCounts).sort((a,b)=>b[1]-a[1])[0];
-  const monthsInRow = topRow[1] >= topCol[1]; // true = months are column headers
-
-  let months=[], monthColMap={};
-
-  if(monthsInRow){
-    // Months spread across a header row → data rows have labels in some col
-    const headerRowIdx=parseInt(topRow[0]);
-    const headerRow=raw[headerRowIdx]||[];
-    // Find which column has the row labels (look for TARGET_LABELS in any col)
-    let labelCol=0;
-    outer:for(let ci=0;ci<(raw[headerRowIdx+1]||[]).length;ci++){
-      for(let ri=headerRowIdx+1;ri<Math.min(raw.length,headerRowIdx+20);ri++){
-        const cell=String(raw[ri][ci]||'').trim().toLowerCase();
-        if(TARGET_LABELS.includes(cell)){labelCol=ci;break outer;}
-      }
-    }
-    // Build monthColMap from the header row
-    headerRow.forEach((cell,ci)=>{
-      const hs=String(cell||'').trim();
-      if(MONTH_RE.test(hs)&&!(hs in monthColMap))monthColMap[hs]=ci;
-    });
-    months=Object.keys(monthColMap).sort();
-
-    // Build lookup: label -> row array
-    const labelRowMap={};
-    for(let ri=headerRowIdx+1;ri<raw.length;ri++){
-      const row=raw[ri];
-      const lbl=String(row[labelCol]||'').trim().toLowerCase();
-      if(lbl)labelRowMap[lbl]=row;
-    }
-
-    function getVals(label){
-      const r=labelRowMap[label.toLowerCase().trim()];if(!r)return{};
-      const res={};
-      months.forEach(m=>{const ci=monthColMap[m];if(ci!==undefined)res[m]=parseAmount(r[ci]);});
-      return res;
-    }
-    function getAllRows(){return Object.entries(labelRowMap).map(([lbl,row])=>({label:lbl,row,labelCol}));}
-
-    cache.netWorth={
-      months,monthColMap,labelCol,headerRowIdx,
-      netWorth:getVals('Net Worth'),
-      assets:getVals('Assets'),
-      liabilities:getVals('Liabilities'),
-      savings:getVals('Savings'),
-      investments:getVals('Investments'),
-      taxable:getVals('Taxable'),
-      taxDeferred:getVals('Tax-Deferred'),
-      taxFree:getVals('Tax-Free'),
-      allRows:raw.slice(headerRowIdx+1),
-      allHeaders:raw[headerRowIdx]||[],
-      labelColIdx:labelCol
-    };
-  } else {
-    // Months down a label column → data columns have labels in a header row
-    const headerColIdx=parseInt(topCol[0]);
-    // Find label row
-    let labelRow=0;
-    outer2:for(let ri=0;ri<Math.min(raw.length,10);ri++){
-      const row=raw[ri]||[];
-      for(let ci=0;ci<row.length;ci++){
-        if(TARGET_LABELS.includes(String(row[ci]||'').trim().toLowerCase())){labelRow=ri;break outer2;}
-      }
-    }
-    // months are in headerColIdx column, going down from labelRow+1
-    const monthRowMap={};
-    raw.forEach((row,ri)=>{
-      const cell=String(row[headerColIdx]||'').trim();
-      if(MONTH_RE.test(cell))monthRowMap[cell]=ri;
-    });
-    months=Object.keys(monthRowMap).sort();
-    // labels are across labelRow
-    const labelRowArr=raw[labelRow]||[];
-    const labelColMap={};
-    labelRowArr.forEach((cell,ci)=>{
-      const lbl=String(cell||'').trim().toLowerCase();
-      if(lbl&&!labelColMap[lbl])labelColMap[lbl]=ci;
-    });
-
-    function getValsT(label){
-      const ci=labelColMap[label.toLowerCase().trim()];if(ci===undefined)return{};
-      const res={};
-      months.forEach(m=>{const ri=monthRowMap[m];if(ri!==undefined)res[m]=parseAmount((raw[ri]||[])[ci]);});
-      return res;
-    }
-    cache.netWorth={
-      months,monthColMap:monthRowMap,
-      netWorth:getValsT('Net Worth'),
-      assets:getValsT('Assets'),
-      liabilities:getValsT('Liabilities'),
-      savings:getValsT('Savings'),
-      investments:getValsT('Investments'),
-      taxable:getValsT('Taxable'),
-      taxDeferred:getValsT('Tax-Deferred'),
-      taxFree:getValsT('Tax-Free'),
-      allRows:raw,
-      allHeaders:labelRowArr,
-      labelColIdx:headerColIdx
-    };
+  // Build label -> row array map from col C
+  const labelRowMap={};
+  for(let ri=1;ri<raw.length;ri++){
+    const row=raw[ri]||[];
+    const lbl=String(row[LABEL_COL]||'').trim();
+    if(lbl)labelRowMap[lbl.toLowerCase()]=row;
   }
+
+  function getVals(label){
+    const r=labelRowMap[label.toLowerCase()];if(!r)return{};
+    const res={};
+    months.forEach(m=>{
+      const ci=monthColMap[m];
+      if(ci!==undefined)res[m]=parseAmount(r[ci]);
+    });
+    return res;
+  }
+
+  cache.netWorth={
+    months,monthColMap,labelRowMap,labelColIdx:LABEL_COL,
+    netWorth:getVals('Net Worth'),
+    assets:getVals('Assets'),
+    liabilities:getVals('Liabilities'),
+    savings:getVals('Savings'),
+    investments:getVals('Investments'),
+    taxable:getVals('Taxable'),
+    taxDeferred:getVals('Tax-Deferred'),
+    taxFree:getVals('Tax-Free'),
+    allRows:raw.slice(1),
+    allHeaders:headerRow
+  };
+
+  // Update dev ref map if panel is open
+  updateDevRefMap();
 }
 
 function renderNetWorth(){
@@ -1828,9 +1779,17 @@ function toggleFireKeepContrib(){
 function toggleFireSide(){
   fireSideVisible=!fireSideVisible;
   const panel=document.getElementById('fire-side-panel');
-  const toggle=document.getElementById('fire-side-toggle');
-  if(fireSideVisible){panel.style.width='';panel.style.opacity='1';panel.style.overflow='';toggle.textContent='◀';}
-  else{panel.style.width='0';panel.style.opacity='0';panel.style.overflow='hidden';toggle.textContent='▶';}
+  const btnCollapsed=document.getElementById('fire-side-toggle-collapsed');
+  const right=document.getElementById('fire-right-panel');
+  if(fireSideVisible){
+    panel.style.width='292px';panel.style.opacity='1';panel.style.overflow='';
+    if(btnCollapsed)btnCollapsed.style.display='none';
+    if(right)right.style.marginLeft='16px';
+  }else{
+    panel.style.width='0';panel.style.opacity='0';panel.style.overflow='hidden';
+    if(btnCollapsed)btnCollapsed.style.display='flex';
+    if(right)right.style.marginLeft='0';
+  }
 }
 
 function toggleFireAdv(){
@@ -1877,25 +1836,41 @@ function calcFIRE(){
     if(cAge===null&&p>=ct){cAge=a;cPort=p;}
     rows.push({age:a,portfolio:Math.round(p),coastTarget:Math.round(ct)});
   }
-  // Calc extra monthly needed if not on track
-  let extraNeeded=null;
+  // If never hit coast target: calc extra monthly needed AND alternate retire age
+  let extraNeeded=null, altRetireAge=null;
   if(!already&&cAge===null){
-    // binary search for monthly contribution needed
-    let lo=0,hi=10000;
-    for(let iter=0;iter<40;iter++){
+    // Binary search: how much MORE per month to hit coastNum by retireAge?
+    let lo=0,hi=50000;
+    for(let iter=0;iter<60;iter++){
       const mid=(lo+hi)/2;
-      const test=portfolio*Math.pow(1+r,yrs)+mid*12*(Math.pow(1+r,yrs)-1)/r;
-      if(test>=coastNum)hi=mid;else lo=mid;
+      const totalMonthly=monthly+mid;
+      const fv=portfolio*Math.pow(1+r,yrs)+totalMonthly*12*(Math.pow(1+r,yrs)-1)/(r||0.0001);
+      if(fv>=coastNum)hi=mid;else lo=mid;
     }
-    extraNeeded=Math.round(hi-monthly);
-    if(extraNeeded<0)extraNeeded=0;
+    extraNeeded=Math.max(0,Math.round(hi));
+
+    // Binary search: what later retire age works with CURRENT monthly?
+    // coastNum shrinks as retire age gets later (less time needed to compound)
+    let loAge=retireAge,hiAge=retireAge+40;
+    for(let iter=0;iter<60;iter++){
+      const midAge=Math.round((loAge+hiAge)/2);
+      const yrsToMid=midAge-age;
+      if(yrsToMid<=0){loAge=midAge;continue;}
+      const spFmid=spending*Math.pow(1+inf,yrsToMid),ssFmid=ss*Math.pow(1+inf,yrsToMid);
+      const fireNumMid=Math.max(0,spFmid-ssFmid)/swrD;
+      const coastNumMid=fireNumMid/Math.pow(1+r,yrsToMid);
+      const fvMid=portfolio*Math.pow(1+r,yrsToMid)+monthly*12*(Math.pow(1+r,yrsToMid)-1)/(r||0.0001);
+      if(fvMid>=coastNumMid)hiAge=midAge;else loAge=midAge;
+      if(hiAge-loAge<=1)break;
+    }
+    altRetireAge=hiAge<=retireAge+40?hiAge:null;
   }
-  return{fireNum,fireToday,coastNum,gap,already,pct,rows,coastAge:cAge,yrsToCoast:cAge?cAge-age:null,yrs,extraNeeded};
+  return{fireNum,fireToday,coastNum,gap,already,pct,rows,coastAge:cAge,yrsToCoast:cAge?cAge-age:null,yrs,extraNeeded,altRetireAge};
 }
 
 function renderFIRE(){
   const c=calcFIRE();if(!c)return;
-  const{fireNum,fireToday,coastNum,gap,already,pct,rows,coastAge,yrsToCoast,yrs,extraNeeded}=c;
+  const{fireNum,fireToday,coastNum,gap,already,pct,rows,coastAge,yrsToCoast,yrs,extraNeeded,altRetireAge}=c;
   const col=already?'var(--accent)':pct>0.7?'var(--warn)':'var(--accent2)';
   const emoji=already?'🏖️':pct>0.7?'🔥':'💰';
   const title=already?"You're Coasting!":pct>0.7?'Almost There':'Building Wealth';
@@ -1905,13 +1880,16 @@ function renderFIRE(){
   } else if(coastAge){
     sub=`You'll hit Coast FIRE at age <strong>${coastAge}</strong> (in ${yrsToCoast} year${yrsToCoast!==1?'s':''}).`;
   } else {
-    sub=`You won't reach Coast FIRE by age ${FS.retireAge} at current savings. Need ~<strong>$${(FS.monthly+extraNeeded).toLocaleString()}/mo</strong> (+$${extraNeeded.toLocaleString()}/mo) to get there.`;
+    const altLine=altRetireAge?` Or retire at <strong>${altRetireAge}</strong> with your current $${FS.monthly.toLocaleString()}/mo.`:'';
+    sub=`Won't reach Coast FIRE by ${FS.retireAge} at current pace. Need <strong>+$${extraNeeded.toLocaleString()}/mo</strong> (total $${(FS.monthly+extraNeeded).toLocaleString()}/mo) to hit it.${altLine}`;
   }
   const right=already
     ?`<div style="text-align:right"><div class="lbl">Retire at</div><div class="big" style="color:var(--accent)">${FS.retireAge}</div></div>`
     :coastAge
       ?`<div style="text-align:right"><div class="lbl">Coast FIRE Age</div><div class="big">${coastAge}</div><div class="meta">in ${yrsToCoast} yr${yrsToCoast!==1?'s':''}</div></div>`
-      :`<div style="text-align:right"><div class="lbl">Extra Needed</div><div class="big" style="font-size:1.4rem;color:var(--warn)">+$${extraNeeded.toLocaleString()}</div><div class="meta">per month</div></div>`;
+      :altRetireAge
+        ?`<div style="text-align:right"><div class="lbl">Or retire at</div><div class="big" style="font-size:1.8rem;color:var(--warn)">${altRetireAge}</div><div class="meta">+$${extraNeeded.toLocaleString()}/mo to hit ${FS.retireAge}</div></div>`
+        :`<div style="text-align:right"><div class="lbl">Extra Needed</div><div class="big" style="font-size:1.4rem;color:var(--warn)">+$${extraNeeded.toLocaleString()}/mo</div><div class="meta">to retire at ${FS.retireAge}</div></div>`;
   document.getElementById('fire-status-card').innerHTML=`<div class="fire-status" style="background:linear-gradient(135deg,color-mix(in srgb,${col} 10%,var(--surface)),var(--surface));border-color:color-mix(in srgb,${col} 30%,var(--border))"><div class="fire-status-left"><div class="emoji">${emoji}</div><div class="title" style="color:${col}">${title}</div><div class="sub">${sub}</div></div><div class="fire-status-right">${right}</div></div>`;
   document.getElementById('fire-progress-wrap').innerHTML=already?'':`<div class="card progress-card"><div class="progress-row"><span>Portfolio: <strong>${fmtS(FS.portfolio)}</strong></span><span>Target: <strong>${fmtS(coastNum)}</strong></span></div><div class="progress-track"><div class="progress-fill" style="width:${pct*100}%"></div></div><div class="progress-note">Need <strong>${fmtS(gap)}</strong> more to reach Coast FIRE today</div></div>`;
   document.getElementById('fire-stats-grid').innerHTML=[
@@ -2117,6 +2095,80 @@ function getCSSVar(v){return getComputedStyle(document.documentElement).getPrope
 function simpleHash(s){let h=0;for(let i=0;i<s.length;i++)h=(Math.imul(31,h)+s.charCodeAt(i))|0;return(h>>>0).toString(36);}
 function statCard(label,value,colorClass='',extraClass=''){return`<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value ${colorClass} ${extraClass}">${value}</div></div>`;}
 function bucketBadge(bucket){const cls={'Fixed':'badge-fixed','Variable':'badge-variable','S & I':'badge-si','Discretionary':'badge-discretionary','Transfer':'badge-transfer'}[bucket]||'';return`<span class="badge ${cls}">${bucket||'—'}</span>`;}
+
+// ═══════════════════════════════════════════════════
+// DEVELOPER / DEBUG
+// ═══════════════════════════════════════════════════
+let devOpen=false;
+function toggleDevSection(){
+  devOpen=!devOpen;
+  document.getElementById('dev-body').style.display=devOpen?'block':'none';
+  document.getElementById('dev-arrow').textContent=devOpen?'▾':'▸';
+  if(devOpen)updateDevRefMap();
+}
+
+function updateDevRefMap(){
+  const el=document.getElementById('dev-ref-map');
+  if(!el)return;
+  const nw=cache.netWorth;
+  if(!nw||!nw.months.length){el.textContent='No Net Worth data loaded yet.';return;}
+  const months=nw.months;
+  const first=months[0],last=months[months.length-1];
+  const firstCol=nw.monthColMap[first],lastCol=nw.monthColMap[last];
+  function colLetter(idx){
+    let s='',n=idx+1;
+    while(n>0){s=String.fromCharCode(65+(n-1)%26)+s;n=Math.floor((n-1)/26);}
+    return s;
+  }
+  const LABELS=['Net Worth','Assets','Liabilities','Savings','Investments','Taxable','Tax-Deferred','Tax-Free'];
+  let lines=[];
+  lines.push(`Months found: ${months.length} (${first} → ${last})`);
+  lines.push(`Month cols:   ${colLetter(firstCol)}1 → ${colLetter(lastCol)}1`);
+  lines.push(`Label col:    ${colLetter(nw.labelColIdx)} (index ${nw.labelColIdx})`);
+  lines.push('');
+  lines.push('Label            | Cell  | Latest Value');
+  lines.push('─'.repeat(46));
+  LABELS.forEach(lbl=>{
+    const vals=nw[lbl.toLowerCase().replace(/[- ]/g,m=>m===' '?'':m=='.'?'':m)]
+      ||(lbl==='Net Worth'?nw.netWorth:lbl==='Tax-Deferred'?nw.taxDeferred:lbl==='Tax-Free'?nw.taxFree:null);
+    // find row index for this label
+    const rowArr=nw.labelRowMap?nw.labelRowMap[lbl.toLowerCase()]:null;
+    const rowIdx=rowArr?nw.allRows.indexOf(rowArr)+2:'?'; // +2 for 1-index + header row
+    const cell=rowArr?`${colLetter(nw.labelColIdx)}${rowIdx}`:'not found';
+    const latestVal=vals&&last?(vals[last]!==undefined?fmt(vals[last]):'$0.00'):'—';
+    lines.push(`${lbl.padEnd(17)}| ${cell.padEnd(6)}| ${latestVal}`);
+  });
+  el.textContent=lines.join('
+');
+}
+
+async function loadDevPreview(){
+  const el=document.getElementById('dev-preview');
+  if(!accessToken||!settings.sheetId){el.textContent='Not signed in or no sheet ID.';return;}
+  el.textContent='Loading...';
+  try{
+    const resp=await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/Net%20Worth!A1:AD12`,
+      {headers:sheetsHeaders()}
+    );
+    const data=await resp.json();
+    const rows=data.values||[];
+    if(!rows.length){el.textContent='No data returned.';return;}
+    // Render as fixed-width grid
+    const COL_W=12;
+    let out='';
+    rows.forEach((row,ri)=>{
+      const cells=[];
+      for(let ci=0;ci<30;ci++){
+        const val=String(row[ci]||'').slice(0,COL_W-1);
+        cells.push(val.padEnd(COL_W));
+      }
+      out+=`Row ${String(ri+1).padStart(2,'0')}: ${cells.join('')}
+`;
+    });
+    el.textContent=out;
+  }catch(e){el.textContent='Error: '+e.message;}
+}
 
 // ═══════════════════════════════════════════════════
 // INIT
