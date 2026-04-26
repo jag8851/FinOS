@@ -349,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.6</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.7</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.6</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.7</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -764,10 +764,10 @@ tbody td.primary{color:var(--text);font-weight:500;}
             <div class="card" style="width:280px;position:relative">
               <div class="card-header">
                 <span class="card-title">Parameters</span>
-                <!-- Collapse arrow — left side of card, vertically centered -->
+                <!-- Collapse arrow — sits outside/left of the card -->
                 <button id="fire-side-toggle" onclick="toggleFireSide()" title="Collapse"
-                  style="position:absolute;left:-1px;top:50%;transform:translateY(-50%);
-                         width:18px;height:40px;
+                  style="position:absolute;left:-20px;top:50%;transform:translateY(-50%);
+                         width:20px;height:48px;
                          background:var(--surface2);border:1px solid var(--border);border-right:none;
                          border-radius:var(--radius-xs) 0 0 var(--radius-xs);
                          color:var(--text3);font-size:0.65rem;cursor:pointer;
@@ -1191,7 +1191,7 @@ function applyDataSheet(rows){
   // monthly_net → update monthly contribution default
   if(dataConfig.monthly_net){
     const mn=parseAmount(dataConfig.monthly_net);
-    if(mn>0&&FS.monthly===1000)FS.monthly=mn; // only override if still at default
+    if(mn>0&&FS.monthly===1000){} // monthly_net available in dataConfig but don't auto-set
   }
   if(fireUpdated){
     // Rebuild sliders to reflect new values
@@ -1956,105 +1956,109 @@ function calcFIRE(){
   const yrs  = retireAge - age;
   if(yrs <= 0) return null;
 
-  // ── FIRE number at retirement (inflation-adjusted) ──────────────────
-  const spendR = spending * Math.pow(1+inf, yrs);
-  const ssR    = ss       * Math.pow(1+inf, yrs);
-  const fireNum  = Math.max(0, spendR - ssR) / swrD;
+  // ── FIRE number at retirement ─────────────────────────────────────────
+  const spendR  = spending * Math.pow(1+inf, yrs);
+  const ssR     = ss       * Math.pow(1+inf, yrs);
+  const fireNum = Math.max(0, spendR - ssR) / swrD;
   const fireToday = fireNum / Math.pow(1+inf, yrs);
 
-  // ── Coast FIRE number = what you need TODAY to coast to fireNum ──────
+  // ── Coast FIRE number = lump sum needed today to hit fireNum by itself ─
+  // coastNum is FIXED — it's what you need TODAY given your target retireAge
   const coastNum = fireNum / Math.pow(1+r, yrs);
   const gap      = Math.max(0, coastNum - portfolio);
   const already  = portfolio >= coastNum;
   const pct      = Math.min(1, portfolio / (coastNum || 1));
 
-  // ── Helper: portfolio value after n years with contributions ─────────
+  // ── FV helpers ───────────────────────────────────────────────────────
   const annual = monthly * 12;
-  function fvWithContrib(n){
-    if(n <= 0) return portfolio;
+  function fv(p, pmt, n){
+    // Future value of lump p + annual payments pmt over n years at rate r
+    if(n <= 0) return p;
     const g = Math.pow(1+r, n);
-    return portfolio * g + (r > 0 ? annual * (g - 1) / r : annual * n);
-  }
-  function fvNoContrib(start, n){
-    // grow a lump sum 'start' for n years
-    return start * Math.pow(1+r, n);
+    return p * g + (r > 0 ? pmt * (g-1)/r : pmt*n);
   }
 
-  // ── Year-by-year rows for chart ──────────────────────────────────────
-  // coastAge = first year portfolio (with contributions) >= coast target
-  // After coastAge, if !fireKeepContrib, stop contributing
-  const rows = [];
+  // ── Year-by-year chart rows ──────────────────────────────────────────
+  // coastAge = age at which portfolio (contributing) first >= coast target for that age
+  // Coast target at age a = fireNum / (1+r)^(retireAge-a)
+  // This is the "if I stop contributing NOW at age a, will I hit fireNum?"
+  // So crossing means you CAN coast — you don't HAVE to stop.
   let coastAge = null, coastPortVal = null;
+  const rows = [];
 
   for(let y = 0; y <= yrs; y++){
-    const a = age + y;
+    const a       = age + y;
     const yRemain = retireAge - a;
-    // Coast target at this age = what you'd need right now to coast the rest of the way
+
+    // Coast target = what you need at age 'a' to coast to fireNum
     const coastTarget = yRemain > 0
       ? fireNum / Math.pow(1+r, yRemain)
       : fireNum;
 
-    let pVal;
-    if(coastAge === null || fireKeepContrib){
-      // Still contributing (or always contributing)
-      pVal = fvWithContrib(y);
-    } else {
-      // Stopped contributing at coastAge — just compound the lump
-      pVal = fvNoContrib(coastPortVal, a - coastAge);
-    }
+    // Portfolio value: always show "with contributions" trajectory on chart
+    // regardless of fireKeepContrib (that toggle affects the coast crossing logic)
+    const pVal = fv(portfolio, annual, y);
 
-    // First crossing: record coast age
+    // Record first crossing — this is when you COULD stop contributing
     if(coastAge === null && pVal >= coastTarget){
-      coastAge    = a;
+      coastAge     = a;
       coastPortVal = pVal;
     }
-    rows.push({age: a, portfolio: Math.round(pVal), coastTarget: Math.round(coastTarget)});
+    rows.push({age:a, portfolio:Math.round(pVal), coastTarget:Math.round(coastTarget)});
   }
 
-  // ── Extra needed / alt retire age (only if won't coast by retireAge) ─
-  // Note: if fireKeepContrib=true, coastAge can be found in the loop above
-  // even though you're contributing. extraNeeded only makes sense when
-  // you NEVER cross the coast target even while contributing.
+  // If fireKeepContrib=false, recalculate the portfolio line after coastAge
+  // so chart shows the "coast" flat trajectory after crossing
+  if(!fireKeepContrib && coastAge !== null){
+    for(let i = 0; i < rows.length; i++){
+      const a = rows[i].age;
+      if(a > coastAge){
+        rows[i].portfolio = Math.round(fv(coastPortVal, 0, a - coastAge));
+      }
+    }
+  }
+
+  // ── Extra/alt (only when you NEVER cross coast target while contributing) ─
   let extraNeeded = null, altRetireAge = null;
 
   if(!already && coastAge === null){
-    // Binary search: extra $/mo so fvWithContrib(yrs) >= coastNum
-    // using full annual contrib
-    let lo = 0, hi = 500000;
-    for(let i = 0; i < 100; i++){
-      const mid = (lo + hi) / 2;
-      const testAnnual = (monthly + mid) * 12;
-      const g   = Math.pow(1+r, yrs);
-      const fv  = portfolio * g + (r > 0 ? testAnnual * (g-1)/r : testAnnual * yrs);
-      if(fv >= coastNum) hi = mid; else lo = mid;
+    // Your portfolio never catches the coast target line before retireAge.
+    // This means your FIRE number is so large that even contributing all the
+    // way to retireAge, fv(portfolio, annual, yrs) < coastNum.
+
+    // 1. How much extra per month to fix it at the SAME retireAge?
+    // Solve: fv(portfolio, (monthly+extra)*12, yrs) = coastNum
+    let lo=0, hi=500000;
+    for(let i=0;i<100;i++){
+      const mid=(lo+hi)/2;
+      if(fv(portfolio,(monthly+mid)*12,yrs)>=coastNum) hi=mid; else lo=mid;
     }
     extraNeeded = Math.max(0, Math.ceil(hi));
 
-    // Binary search: earliest retire age where current contributions work
-    // At a later retireAge: more years → higher FV, but also higher fireNum/coastNum
-    // We want the smallest retireAge > current where fvWithContrib(yrsM) >= coastM
-    let found = null;
-    for(let ra = retireAge+1; ra <= retireAge+50; ra++){
-      const yrsM   = ra - age;
-      if(yrsM <= 0) continue;
-      const spM    = spending * Math.pow(1+inf, yrsM);
-      const ssM    = ss       * Math.pow(1+inf, yrsM);
-      const fireM  = Math.max(0, spM - ssM) / swrD;
-      const coastM = fireM / Math.pow(1+r, yrsM);
-      const g      = Math.pow(1+r, yrsM);
-      const fvM    = portfolio * g + (r > 0 ? annual * (g-1)/r : annual * yrsM);
-      if(fvM >= coastM){ found = ra; break; }
+    // 2. What's the earliest retire age where current monthly is enough?
+    // As retireAge increases:
+    //   - coastNum changes: fireNum(retireAge) / (1+r)^yrs
+    //     BUT fireNum itself also grows (more inflation, more spending needed)
+    //   - fv(portfolio, annual, yrs) increases (more years to compound)
+    // We iterate and find where fv >= coastNum
+    for(let ra=retireAge+1; ra<=retireAge+60; ra++){
+      const yrsR   = ra - age;
+      if(yrsR <= 0) continue;
+      const spR2   = spending * Math.pow(1+inf, yrsR);
+      const ssR2   = ss       * Math.pow(1+inf, yrsR);
+      const fireR2 = Math.max(0, spR2-ssR2) / swrD;
+      const coastR2= fireR2 / Math.pow(1+r, yrsR);
+      const fvR2   = fv(portfolio, annual, yrsR);
+      if(fvR2 >= coastR2){ altRetireAge=ra; break; }
     }
-    altRetireAge = found;
   }
 
   return{
     fireNum, fireToday, coastNum, gap, already, pct, rows,
-    coastAge, yrsToCoast: coastAge ? coastAge - age : null,
+    coastAge, yrsToCoast: coastAge!=null ? coastAge-age : null,
     yrs, extraNeeded, altRetireAge
   };
 }
-
 function renderFIRE(){
   const c = calcFIRE();
   if(!c) return;
