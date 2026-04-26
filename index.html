@@ -349,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.5</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.6</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.5</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.6</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -1950,174 +1950,253 @@ function autoPopulateFIRE(){
 
 function calcFIRE(){
   const{age,retireAge,portfolio,monthly,spending,returnRate,inflation,swr,ss}=FS;
-  const r=returnRate/100;        // annual nominal return
-  const inf=inflation/100;       // annual inflation
-  const swrD=swr/100;            // safe withdrawal rate decimal
-  const yrs=retireAge-age;
-  if(yrs<=0)return null;
+  const r    = returnRate / 100;
+  const inf  = inflation  / 100;
+  const swrD = swr        / 100;
+  const yrs  = retireAge - age;
+  if(yrs <= 0) return null;
 
-  // ── Step 1: FIRE Number (how much you need at retirement) ──────────────
-  // Adjust spending and SS for inflation to retirement date
-  const spendAtRetire = spending * Math.pow(1+inf, yrs);
-  const ssAtRetire    = ss      * Math.pow(1+inf, yrs);
-  const fireNum       = Math.max(0, spendAtRetire - ssAtRetire) / swrD;
-
-  // FIRE number in today's dollars
+  // ── FIRE number at retirement (inflation-adjusted) ──────────────────
+  const spendR = spending * Math.pow(1+inf, yrs);
+  const ssR    = ss       * Math.pow(1+inf, yrs);
+  const fireNum  = Math.max(0, spendR - ssR) / swrD;
   const fireToday = fireNum / Math.pow(1+inf, yrs);
 
-  // ── Step 2: Coast FIRE Number (what you need TODAY to coast) ───────────
-  // coastNum = fireNum discounted back by return rate over yrs
+  // ── Coast FIRE number = what you need TODAY to coast to fireNum ──────
   const coastNum = fireNum / Math.pow(1+r, yrs);
   const gap      = Math.max(0, coastNum - portfolio);
   const already  = portfolio >= coastNum;
   const pct      = Math.min(1, portfolio / (coastNum || 1));
 
-  // ── Step 3: Build year-by-year projection ──────────────────────────────
-  // FV of lump sum + FV of annual contributions (monthly * 12)
-  // FV = P*(1+r)^n + PMT * [((1+r)^n - 1) / r]
+  // ── Helper: portfolio value after n years with contributions ─────────
   const annual = monthly * 12;
-  function portfolioAt(years, keepContrib){
-    if(years <= 0) return portfolio;
-    const growth = Math.pow(1+r, years);
-    const contribFV = (r > 0)
-      ? annual * (growth - 1) / r
-      : annual * years;
-    // If keepContrib=false and we've already coasted, just let lump grow
-    // (handled below per-year)
-    return portfolio * growth + contribFV;
+  function fvWithContrib(n){
+    if(n <= 0) return portfolio;
+    const g = Math.pow(1+r, n);
+    return portfolio * g + (r > 0 ? annual * (g - 1) / r : annual * n);
+  }
+  function fvNoContrib(start, n){
+    // grow a lump sum 'start' for n years
+    return start * Math.pow(1+r, n);
   }
 
+  // ── Year-by-year rows for chart ──────────────────────────────────────
+  // coastAge = first year portfolio (with contributions) >= coast target
+  // After coastAge, if !fireKeepContrib, stop contributing
   const rows = [];
-  let cAge = null, cPortVal = null;
+  let coastAge = null, coastPortVal = null;
+
   for(let y = 0; y <= yrs; y++){
     const a = age + y;
     const yRemain = retireAge - a;
-    // Coast target shrinks as we approach retirement (less time to compound)
+    // Coast target at this age = what you'd need right now to coast the rest of the way
     const coastTarget = yRemain > 0
       ? fireNum / Math.pow(1+r, yRemain)
       : fireNum;
 
     let pVal;
-    if(fireKeepContrib || cAge === null){
-      // Still contributing
-      pVal = portfolioAt(y, true);
+    if(coastAge === null || fireKeepContrib){
+      // Still contributing (or always contributing)
+      pVal = fvWithContrib(y);
     } else {
-      // Coasted — just compound from the coast point, no new contributions
-      const yrsSinceCoast = a - cAge;
-      pVal = cPortVal * Math.pow(1+r, yrsSinceCoast);
+      // Stopped contributing at coastAge — just compound the lump
+      pVal = fvNoContrib(coastPortVal, a - coastAge);
     }
 
-    if(cAge === null && pVal >= coastTarget){
-      cAge = a;
-      cPortVal = pVal;
+    // First crossing: record coast age
+    if(coastAge === null && pVal >= coastTarget){
+      coastAge    = a;
+      coastPortVal = pVal;
     }
-    rows.push({age:a, portfolio:Math.round(pVal), coastTarget:Math.round(coastTarget)});
+    rows.push({age: a, portfolio: Math.round(pVal), coastTarget: Math.round(coastTarget)});
   }
 
-  // ── Step 4: If never coasted — find extra $/mo needed & alt retire age ─
+  // ── Extra needed / alt retire age (only if won't coast by retireAge) ─
+  // Note: if fireKeepContrib=true, coastAge can be found in the loop above
+  // even though you're contributing. extraNeeded only makes sense when
+  // you NEVER cross the coast target even while contributing.
   let extraNeeded = null, altRetireAge = null;
 
-  if(!already && cAge === null){
-    // Binary search: extra monthly contributions to hit coastNum by retireAge
-    let lo = 0, hi = 100000;
-    for(let i = 0; i < 80; i++){
+  if(!already && coastAge === null){
+    // Binary search: extra $/mo so fvWithContrib(yrs) >= coastNum
+    // using full annual contrib
+    let lo = 0, hi = 500000;
+    for(let i = 0; i < 100; i++){
       const mid = (lo + hi) / 2;
-      const totalAnnual = (monthly + mid) * 12;
-      const fv = portfolio * Math.pow(1+r, yrs) +
-                 (r > 0 ? totalAnnual * (Math.pow(1+r, yrs) - 1) / r : totalAnnual * yrs);
+      const testAnnual = (monthly + mid) * 12;
+      const g   = Math.pow(1+r, yrs);
+      const fv  = portfolio * g + (r > 0 ? testAnnual * (g-1)/r : testAnnual * yrs);
       if(fv >= coastNum) hi = mid; else lo = mid;
     }
     extraNeeded = Math.max(0, Math.ceil(hi));
 
-    // Binary search: what LATER retire age lets current monthly work?
-    // As retireAge increases: coastNum decreases (less time to grow),
-    // but your portfolio FV increases (more years to contribute).
-    // Find crossover point.
-    let loAge = retireAge, hiAge = retireAge + 50;
-    for(let i = 0; i < 80; i++){
-      const midAge = Math.round((loAge + hiAge) / 2);
-      const yrsM   = midAge - age;
-      if(yrsM <= 0){ loAge = midAge; continue; }
+    // Binary search: earliest retire age where current contributions work
+    // At a later retireAge: more years → higher FV, but also higher fireNum/coastNum
+    // We want the smallest retireAge > current where fvWithContrib(yrsM) >= coastM
+    let found = null;
+    for(let ra = retireAge+1; ra <= retireAge+50; ra++){
+      const yrsM   = ra - age;
+      if(yrsM <= 0) continue;
       const spM    = spending * Math.pow(1+inf, yrsM);
-      const ssM    = ss      * Math.pow(1+inf, yrsM);
+      const ssM    = ss       * Math.pow(1+inf, yrsM);
       const fireM  = Math.max(0, spM - ssM) / swrD;
       const coastM = fireM / Math.pow(1+r, yrsM);
-      const fvM    = portfolio * Math.pow(1+r, yrsM) +
-                     (r > 0 ? annual * (Math.pow(1+r, yrsM) - 1) / r : annual * yrsM);
-      if(fvM >= coastM) hiAge = midAge; else loAge = midAge;
-      if(hiAge - loAge <= 1) break;
+      const g      = Math.pow(1+r, yrsM);
+      const fvM    = portfolio * g + (r > 0 ? annual * (g-1)/r : annual * yrsM);
+      if(fvM >= coastM){ found = ra; break; }
     }
-    altRetireAge = (hiAge <= retireAge + 50) ? hiAge : null;
+    altRetireAge = found;
   }
 
   return{
     fireNum, fireToday, coastNum, gap, already, pct, rows,
-    coastAge:cAge, yrsToCoast:cAge ? cAge-age : null,
+    coastAge, yrsToCoast: coastAge ? coastAge - age : null,
     yrs, extraNeeded, altRetireAge
   };
 }
+
 function renderFIRE(){
-  const c=calcFIRE();if(!c)return;
-  const{fireNum,fireToday,coastNum,gap,already,pct,rows,coastAge,yrsToCoast,yrs,extraNeeded,altRetireAge}=c;
-  const col=already?'var(--accent)':pct>0.7?'var(--warn)':'var(--accent2)';
-  const emoji=already?'🏖️':pct>0.7?'🔥':'💰';
-  const title=already?"You're Coasting!":pct>0.7?'Almost There':'Building Wealth';
-  let sub;
+  const c = calcFIRE();
+  if(!c) return;
+  const{fireNum,fireToday,coastNum,gap,already,pct,rows,coastAge,yrsToCoast,yrs,extraNeeded,altRetireAge} = c;
+
+  const col   = already ? 'var(--accent)' : pct > 0.7 ? 'var(--warn)' : 'var(--accent2)';
+  const emoji  = already ? '🏖️' : pct > 0.7 ? '🔥' : '💰';
+  const title  = already ? "You're Coasting!" : pct > 0.7 ? 'Almost There' : 'Building Wealth';
+
+  // Status sub-text — keep it to one clean sentence
+  let sub, right;
   if(already){
-    sub=`Your ${fmt(FS.portfolio)} compounds to ${fmtS(fireNum)} by age ${FS.retireAge} without additional contributions.`;
+    sub   = `Your ${fmt(FS.portfolio)} compounds to ${fmtS(fireNum)} by age ${FS.retireAge} — no contributions needed.`;
+    right = `<div style="text-align:right"><div class="lbl">Retire at</div><div class="big" style="color:var(--accent)">${FS.retireAge}</div></div>`;
   } else if(coastAge){
-    sub=`You'll hit Coast FIRE at age <strong>${coastAge}</strong> (in ${yrsToCoast} year${yrsToCoast!==1?'s':''}).`;
+    sub   = `You'll hit Coast FIRE at age <strong>${coastAge}</strong> — ${yrsToCoast} year${yrsToCoast!==1?'s':''} from now.`;
+    right = `<div style="text-align:right"><div class="lbl">Coast FIRE Age</div><div class="big">${coastAge}</div><div class="meta">${yrsToCoast} yr${yrsToCoast!==1?'s':''} away</div></div>`;
+  } else if(altRetireAge){
+    // Won't coast by target age, but CAN coast if retire later
+    sub   = `Won't coast by ${FS.retireAge}. Add <strong>+$${extraNeeded.toLocaleString()}/mo</strong> to hit it, or push retirement to <strong>${altRetireAge}</strong>.`;
+    right = `<div style="text-align:right">
+               <div class="lbl">Or retire at</div>
+               <div class="big" style="font-size:1.8rem;color:var(--warn)">${altRetireAge}</div>
+               <div class="meta" style="margin-top:4px">+$${extraNeeded.toLocaleString()}/mo → age ${FS.retireAge}</div>
+             </div>`;
   } else {
-    const altLine=altRetireAge?` Or retire at <strong>${altRetireAge}</strong> with your current $${FS.monthly.toLocaleString()}/mo.`:'';
-    sub=`Won't reach Coast FIRE by ${FS.retireAge} at current pace. Need <strong>+$${extraNeeded.toLocaleString()}/mo</strong> (total $${(FS.monthly+extraNeeded).toLocaleString()}/mo) to hit it.${altLine}`;
+    // Can't find any workable retire age
+    sub   = `Add <strong>+$${(extraNeeded||0).toLocaleString()}/mo</strong> to reach Coast FIRE by ${FS.retireAge}.`;
+    right = `<div style="text-align:right"><div class="lbl">Extra Needed</div><div class="big" style="font-size:1.4rem;color:var(--warn)">+$${(extraNeeded||0).toLocaleString()}/mo</div></div>`;
   }
-  const right=already
-    ?`<div style="text-align:right"><div class="lbl">Retire at</div><div class="big" style="color:var(--accent)">${FS.retireAge}</div></div>`
-    :coastAge
-      ?`<div style="text-align:right"><div class="lbl">Coast FIRE Age</div><div class="big">${coastAge}</div><div class="meta">in ${yrsToCoast} yr${yrsToCoast!==1?'s':''}</div></div>`
-      :altRetireAge
-        ?`<div style="text-align:right"><div class="lbl">Or retire at</div><div class="big" style="font-size:1.8rem;color:var(--warn)">${altRetireAge}</div><div class="meta">+$${extraNeeded.toLocaleString()}/mo to hit ${FS.retireAge}</div></div>`
-        :`<div style="text-align:right"><div class="lbl">Extra Needed</div><div class="big" style="font-size:1.4rem;color:var(--warn)">+$${extraNeeded.toLocaleString()}/mo</div><div class="meta">to retire at ${FS.retireAge}</div></div>`;
-  document.getElementById('fire-status-card').innerHTML=`<div class="fire-status" style="background:linear-gradient(135deg,color-mix(in srgb,${col} 10%,var(--surface)),var(--surface));border-color:color-mix(in srgb,${col} 30%,var(--border))"><div class="fire-status-left"><div class="emoji">${emoji}</div><div class="title" style="color:${col}">${title}</div><div class="sub">${sub}</div></div><div class="fire-status-right">${right}</div></div>`;
-  document.getElementById('fire-progress-wrap').innerHTML=already?'':`<div class="card progress-card"><div class="progress-row"><span>Portfolio: <strong>${fmtS(FS.portfolio)}</strong></span><span>Target: <strong>${fmtS(coastNum)}</strong></span></div><div class="progress-track"><div class="progress-fill" style="width:${pct*100}%"></div></div><div class="progress-note">Need <strong>${fmtS(gap)}</strong> more to reach Coast FIRE today</div></div>`;
+
+  document.getElementById('fire-status-card').innerHTML=`
+    <div class="fire-status" style="background:linear-gradient(135deg,color-mix(in srgb,${col} 10%,var(--surface)),var(--surface));border-color:color-mix(in srgb,${col} 30%,var(--border))">
+      <div class="fire-status-left">
+        <div class="emoji">${emoji}</div>
+        <div class="title" style="color:${col}">${title}</div>
+        <div class="sub">${sub}</div>
+      </div>
+      <div class="fire-status-right">${right}</div>
+    </div>`;
+
+  document.getElementById('fire-progress-wrap').innerHTML = already ? '' : `
+    <div class="card progress-card">
+      <div class="progress-row">
+        <span>Portfolio: <strong>${fmtS(FS.portfolio)}</strong></span>
+        <span>Coast Target: <strong>${fmtS(coastNum)}</strong></span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct*100}%"></div></div>
+      <div class="progress-note">Need <strong>${fmtS(gap)}</strong> more to coast today</div>
+    </div>`;
+
   document.getElementById('fire-stats-grid').innerHTML=[
-    {lb:'FIRE Number',v:fmtS(fireNum),col:'var(--accent)'},
-    {lb:'Coast Number',v:fmtS(coastNum),col:'var(--accent2)'},
-    {lb:'FIRE (Today $)',v:fmtS(fireToday),col:'#4caf6e'},
-    {lb:'Years to Retire',v:`${yrs}`,col:'var(--warn)'},
+    {lb:'FIRE Number',    v:fmtS(fireNum),   col:'var(--accent)'},
+    {lb:'Coast Number',   v:fmtS(coastNum),  col:'var(--accent2)'},
+    {lb:'FIRE (Today $)', v:fmtS(fireToday), col:'#4caf6e'},
+    {lb:'Years to Retire',v:`${yrs}`,         col:'var(--warn)'},
   ].map(({lb,v,col})=>`<div class="stat-card"><div class="stat-label">${lb}</div><div class="stat-value" style="color:${col}">${v}</div></div>`).join('');
-  const coastLineAge=coastAge;
-  const coastPlugin={
-    id:'coastLine',
+
+  // ── Chart ────────────────────────────────────────────────────────────
+  // x-axis labels are ages as strings — find coastAge by index not pixel value
+  const labels = rows.map(r => String(r.age));
+  const coastIdx = coastAge ? labels.indexOf(String(coastAge)) : -1;
+
+  const coastPlugin = {
+    id: 'coastLine',
     afterDraw(chart){
-      if(!coastLineAge)return;
-      const{ctx,chartArea,scales}=chart;
-      const x=scales.x.getPixelForValue(coastLineAge);
-      if(x<chartArea.left||x>chartArea.right)return;
+      if(coastIdx < 0) return;
+      const{ctx, chartArea, scales} = chart;
+      // Use the data point pixel position for exact alignment
+      const x = scales.x.getPixelForTick
+        ? scales.x.getPixelForTick(coastIdx)
+        : scales.x.getPixelForValue(coastIdx);
+      if(x < chartArea.left || x > chartArea.right) return;
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(x,chartArea.top);
-      ctx.lineTo(x,chartArea.bottom);
-      ctx.strokeStyle=getCSSVar('--accent');
-      ctx.lineWidth=2;
-      ctx.setLineDash([4,3]);
+      ctx.moveTo(x, chartArea.top + 24); // leave room for emoji
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.strokeStyle = getCSSVar('--accent');
+      ctx.lineWidth   = 2;
+      ctx.setLineDash([5, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
-      // Palm tree emoji above line
-      ctx.font='18px serif';
-      ctx.textAlign='center';
-      ctx.fillText('🌴',x,chartArea.top-6);
+      ctx.font        = '18px serif';
+      ctx.textAlign   = 'center';
+      ctx.fillText('🌴', x, chartArea.top + 18);
       ctx.restore();
     }
   };
-  if(fireChartInst)fireChartInst.destroy();
-  fireChartInst=new Chart(document.getElementById('fire-chart'),{
-    type:'line',data:{labels:rows.map(r=>r.age),datasets:[
-      {label:'Your Portfolio',data:rows.map(r=>r.portfolio),borderColor:getCSSVar('--accent'),backgroundColor:getCSSVar('--accent')+'22',fill:true,borderWidth:2.5,tension:0.4,pointRadius:2},
-      {label:'Coast Target',data:rows.map(r=>r.coastTarget),borderColor:getCSSVar('--accent2'),backgroundColor:getCSSVar('--accent2')+'11',fill:true,borderWidth:1.5,tension:0.4,pointRadius:1,borderDash:[5,3]},
-    ]},
+
+  if(fireChartInst) fireChartInst.destroy();
+  fireChartInst = new Chart(document.getElementById('fire-chart'),{
+    type: 'line',
+    data: {
+      labels,
+      datasets:[
+        {
+          label:'Your Portfolio',
+          data: rows.map(r=>r.portfolio),
+          borderColor: getCSSVar('--accent'),
+          backgroundColor: getCSSVar('--accent')+'22',
+          fill: true, borderWidth: 2.5, tension: 0.4,
+          pointRadius: 0, pointHoverRadius: 5,
+          pointHoverBackgroundColor: getCSSVar('--accent'),
+        },
+        {
+          label:'Coast Target',
+          data: rows.map(r=>r.coastTarget),
+          borderColor: getCSSVar('--accent2'),
+          backgroundColor: getCSSVar('--accent2')+'11',
+          fill: true, borderWidth: 1.5, tension: 0.4,
+          borderDash: [5,3],
+          pointRadius: 0, pointHoverRadius: 4,
+          pointHoverBackgroundColor: getCSSVar('--accent2'),
+        },
+      ]
+    },
     plugins:[coastPlugin],
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:28}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmtS(c.raw)}`}}},scales:{x:{title:{display:true,text:'Age',color:getCSSVar('--text3'),font:{size:10}},ticks:{color:getCSSVar('--text3'),font:{size:10}},grid:{display:false}},y:{ticks:{color:getCSSVar('--text3'),font:{size:10},callback:v=>fmtShort(v)},grid:{color:getCSSVar('--border')+'55'}}}}
+    options:{
+      responsive: true, maintainAspectRatio: false,
+      layout:{ padding:{ top: 32 } },
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          callbacks:{
+            title: items => `Age ${items[0].label}`,
+            label: c => `${c.dataset.label}: ${fmtS(c.raw)}`
+          }
+        }
+      },
+      scales:{
+        x:{
+          title:{ display:true, text:'Age', color:getCSSVar('--text3'), font:{size:10} },
+          ticks:{ color:getCSSVar('--text3'), font:{size:10}, maxTicksLimit:10 },
+          grid:{ display:false }
+        },
+        y:{
+          ticks:{ color:getCSSVar('--text3'), font:{size:10}, callback:v=>fmtShort(v) },
+          grid:{ color:getCSSVar('--border')+'55' }
+        }
+      }
+    }
   });
 }
 
