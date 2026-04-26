@@ -338,6 +338,9 @@ tbody td.primary{color:var(--text);font-weight:500;}
 @media(max-width:900px){.fire-layout{grid-template-columns:1fr;}}
 
 .inline-select{background:var(--surface2);border:1px solid var(--accent);border-radius:var(--radius-xs);color:var(--text);font-size:0.78rem;padding:3px 6px;outline:none;font-family:'DM Sans',sans-serif;}
+.fire-val-edit{cursor:text;border-radius:3px;padding:1px 4px;transition:background 0.15s;}
+.fire-val-edit:hover{background:var(--surface2);}
+.fire-val-edit:focus{background:var(--surface2);outline:1px solid var(--accent);outline-offset:1px;}
 </style>
 </head>
 <body>
@@ -346,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.4</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.5</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -468,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.4</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.5</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -1142,12 +1145,69 @@ function parseAmount(v){
   return isNaN(n)?0:n;
 }
 
+// ═══════════════════════════════════════════════════
+// DATA SHEET — pull key/value config
+// ═══════════════════════════════════════════════════
+let dataConfig={};
+function applyDataSheet(rows){
+  // rows[0] = ['Category','Field','Key','Value']
+  if(!rows||rows.length<2)return;
+  rows.slice(1).forEach(r=>{
+    const key=String(r[2]||'').trim();
+    const val=String(r[3]||'').trim();
+    if(!key)return;
+    dataConfig[key]=val;
+  });
+  // Apply birthday
+  if(dataConfig.birthday){
+    // convert M/D/YYYY to YYYY-MM-DD
+    const parts=dataConfig.birthday.split('/');
+    if(parts.length===3){
+      const iso=`${parts[2].padStart(4,'0')}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
+      if(!settings.birthday||settings.birthday!==iso){
+        settings.birthday=iso;
+        const bi=document.getElementById('birthday-input');
+        if(bi)bi.value=iso;
+        updateBirthdayDisplay();
+        saveAppSettings();
+      }
+    }
+  }
+  // Apply FIRE values to sliders
+  const fireMap={
+    fire_age:'retireAge', return_rate:'returnRate', swr:'swr', inflation:'inflation',
+    fire_spending:'spending'
+  };
+  let fireUpdated=false;
+  Object.entries(fireMap).forEach(([dk,fk])=>{
+    if(!dataConfig[dk])return;
+    let v=parseAmount(dataConfig[dk]);
+    // return_rate, swr, inflation come as decimals (0.10) or percent (10%) — normalise to %
+    if(dk==='return_rate'||dk==='swr'||dk==='inflation'){
+      if(v<1)v=parseFloat((v*100).toFixed(4)); // 0.10 → 10, 0.03 → 3
+    }
+    if(!isNaN(v)&&v>0){FS[fk]=v;fireUpdated=true;}
+  });
+  // monthly_net → update monthly contribution default
+  if(dataConfig.monthly_net){
+    const mn=parseAmount(dataConfig.monthly_net);
+    if(mn>0&&FS.monthly===1000)FS.monthly=mn; // only override if still at default
+  }
+  if(fireUpdated){
+    // Rebuild sliders to reflect new values
+    buildFireSliders(FIRE_SLIDERS_MAIN,'fire-main-sliders');
+    buildFireSliders(FIRE_SLIDERS_ADV,'fire-adv-sliders');
+    syncBirthdayToFIRE();
+  }
+}
+
 async function refreshData(){
   if(!accessToken||!settings.sheetId){showToast('Not connected to Google','error');return;}
   document.getElementById('refresh-btn').innerHTML='<div class="spinner" style="width:14px;height:14px;border-width:2px"></div>';
   try{
-    const data=await batchGetSheets(['Spending!A:J','Income!A:H','Rules!A:C','Categories!A:B','Net Worth!A1:ZZ200']);
-    const[sp,inc,rules,cats,nw]=data.valueRanges;
+    const data=await batchGetSheets(['Spending!A:J','Income!A:H','Rules!A:C','Categories!A:B','Net Worth!A1:ZZ200','Data!A:D']);
+    const[sp,inc,rules,cats,nw,dataSheet]=data.valueRanges;
+    applyDataSheet(dataSheet?.values||[]);
     cache.spending=parseRows(sp?.values,[]);
     cache.income=parseRows(inc?.values,[]);
     cache.rules=parseRows(rules?.values,[]);
@@ -1289,7 +1349,11 @@ function setNWRange(r,btn){nwRange=r;document.querySelectorAll('#nw-range-btns .
 
 function drawNWChart(){
   const nw=cache.netWorth;if(!nw)return;
-  const months=nw.months.slice(-nwRange);
+  // Cut off at last month with NW > 0 and not beyond today
+  const todayM=getMonthStr(new Date());
+  const validMonths=nw.months.filter(m=>m<=todayM&&(nw.netWorth[m]||0)>0);
+  if(!validMonths.length)return;
+  const months=validMonths.slice(-nwRange);
   const accent=getCSSVar('--accent'),accent2=getCSSVar('--accent2'),danger=getCSSVar('--danger'),text3=getCSSVar('--text3');
   const datasets=[
     {label:'Net Worth',data:months.map(m=>nw.netWorth[m]||0),borderColor:accent,backgroundColor:accent+'22',fill:true,borderWidth:2.5,pointRadius:2,tension:0.4},
@@ -1351,6 +1415,8 @@ function renderDashboard(){
   const now=new Date();
   const thisM=getMonthStr(now);
   document.getElementById('dash-month-title').textContent=fmtMonth(thisM);
+  // If no data yet and we're connected, trigger a load
+  if(!cache.lastFetch&&accessToken&&settings.sheetId){refreshData();return;}
   // Income this month
   const incThisM=cache.income.filter(r=>r['Date']?.startsWith(thisM));
   const gross=incThisM.reduce((s,r)=>s+parseAmount(r['Gross']),0);
@@ -1417,11 +1483,9 @@ function categorizeContrib(category=''){
 }
 function renderRateCards(containerId,grossIncome,netIncome,spendRows,period){
   const si=spendRows.filter(r=>r['Bucket']==='S & I');
-  const savRows=si.filter(r=>categorizeContrib(r['Category']==='save'||r['Bucket']==='savings'));
-  // Actually just split by keyword on category
   let savTotal=0,investTotal=0;
   si.forEach(r=>{
-    const t=categorizeContrib(r['Category']);
+    const t=categorizeContrib(String(r['Category']||''));
     const amt=parseAmount(r['Amount']);
     if(t==='save')savTotal+=amt;
     else investTotal+=amt;
@@ -1768,7 +1832,7 @@ function renderCategoryTrend(){
 // FIRE CALCULATOR
 // ═══════════════════════════════════════════════════
 const FS={age:24,retireAge:55,portfolio:50000,monthly:1000,spending:60000,returnRate:10,inflation:3,swr:4,ss:0};
-let fireKeepContrib=false,fireAdvOpen=false,fireSideVisible=true;
+let fireKeepContrib=true,fireAdvOpen=false,fireSideVisible=true;
 let fireChartInst=null;
 
 const FIRE_SLIDERS_MAIN=[
@@ -1790,13 +1854,36 @@ function buildFireSliders(list,containerId){
   const el=document.getElementById(containerId);el.innerHTML='';
   list.forEach(({k,lb,min,max,st,f,hint})=>{
     const d=document.createElement('div');d.className='slider-wrap';d.style.marginBottom='16px';
-    d.innerHTML=`<div class="slider-row"><span class="slider-label">${lb}</span><span class="slider-val" id="fv-${k}">${f(FS[k])}</span></div><input type="range" id="fr-${k}" min="${min}" max="${max}" step="${st}" value="${FS[k]}">${hint?`<div class="slider-hint">${hint}</div>`:''}`;
+    d.innerHTML=`<div class="slider-row"><span class="slider-label">${lb}</span><span class="slider-val fire-val-edit" id="fv-${k}" title="Click to edit" contenteditable="true" spellcheck="false">${f(FS[k])}</span></div><input type="range" id="fr-${k}" min="${min}" max="${max}" step="${st}" value="${FS[k]}">${hint?`<div class="slider-hint">${hint}</div>`:''}`;
     el.appendChild(d);
-    document.getElementById(`fr-${k}`).addEventListener('input',e=>{
+    const slider=document.getElementById(`fr-${k}`);
+    const valEl=document.getElementById(`fv-${k}`);
+    slider.addEventListener('input',e=>{
       FS[k]=parseFloat(e.target.value);
       if(k==='age'&&FS.retireAge<=FS.age){FS.retireAge=FS.age+1;const r=document.getElementById('fr-retireAge');if(r)r.value=FS.retireAge;const v=document.getElementById('fv-retireAge');if(v)v.textContent=`${FS.retireAge} yrs`;}
       if(k==='age'){const r=document.getElementById('fr-retireAge');if(r)r.min=FS.age+1;}
-      document.getElementById(`fv-${k}`).textContent=f(FS[k]);renderFIRE();
+      valEl.textContent=f(FS[k]);renderFIRE();
+    });
+    // Editable value: parse on blur/enter, clamp to slider range
+    valEl.addEventListener('focus',()=>{
+      const sel=window.getSelection(),range=document.createRange();
+      range.selectNodeContents(valEl);sel.removeAllRanges();sel.addRange(range);
+    });
+    valEl.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){e.preventDefault();valEl.blur();}
+      if(e.key==='Escape'){valEl.textContent=f(FS[k]);valEl.blur();}
+    });
+    valEl.addEventListener('blur',()=>{
+      const raw=valEl.textContent.replace(/[$,%k,Mk yrs]/gi,'').trim();
+      let v=parseFloat(raw);
+      if(raw.toLowerCase().includes('k'))v=parseFloat(raw)*1000;
+      if(raw.toLowerCase().includes('m'))v=parseFloat(raw)*1000000;
+      if(!isNaN(v)){
+        v=Math.min(max,Math.max(min,v));
+        FS[k]=v;slider.value=v;
+      }
+      valEl.textContent=f(FS[k]);
+      renderFIRE();
     });
   });
   // Add toggle at bottom of main sliders
@@ -1804,7 +1891,7 @@ function buildFireSliders(list,containerId){
     const wrap=document.createElement('div');wrap.style.marginTop='8px';wrap.style.paddingTop='12px';wrap.style.borderTop='1px solid var(--border)';
     wrap.innerHTML=`
       <div class="pill-toggle">
-        <div class="pill-track" id="fire-keep-pill" onclick="toggleFireKeepContrib()"><div class="pill-thumb"></div></div>
+        <div class="pill-track ${fireKeepContrib?'on':''}" id="fire-keep-pill" onclick="toggleFireKeepContrib()"><div class="pill-thumb"></div></div>
         <span style="font-size:0.8rem;color:var(--text2)">Keep contributing after coast</span>
       </div>`;
     el.appendChild(wrap);
@@ -1999,13 +2086,38 @@ function renderFIRE(){
     {lb:'FIRE (Today $)',v:fmtS(fireToday),col:'#4caf6e'},
     {lb:'Years to Retire',v:`${yrs}`,col:'var(--warn)'},
   ].map(({lb,v,col})=>`<div class="stat-card"><div class="stat-label">${lb}</div><div class="stat-value" style="color:${col}">${v}</div></div>`).join('');
+  const coastLineAge=coastAge;
+  const coastPlugin={
+    id:'coastLine',
+    afterDraw(chart){
+      if(!coastLineAge)return;
+      const{ctx,chartArea,scales}=chart;
+      const x=scales.x.getPixelForValue(coastLineAge);
+      if(x<chartArea.left||x>chartArea.right)return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x,chartArea.top);
+      ctx.lineTo(x,chartArea.bottom);
+      ctx.strokeStyle=getCSSVar('--accent');
+      ctx.lineWidth=2;
+      ctx.setLineDash([4,3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Palm tree emoji above line
+      ctx.font='18px serif';
+      ctx.textAlign='center';
+      ctx.fillText('🌴',x,chartArea.top-6);
+      ctx.restore();
+    }
+  };
   if(fireChartInst)fireChartInst.destroy();
   fireChartInst=new Chart(document.getElementById('fire-chart'),{
     type:'line',data:{labels:rows.map(r=>r.age),datasets:[
       {label:'Your Portfolio',data:rows.map(r=>r.portfolio),borderColor:getCSSVar('--accent'),backgroundColor:getCSSVar('--accent')+'22',fill:true,borderWidth:2.5,tension:0.4,pointRadius:2},
       {label:'Coast Target',data:rows.map(r=>r.coastTarget),borderColor:getCSSVar('--accent2'),backgroundColor:getCSSVar('--accent2')+'11',fill:true,borderWidth:1.5,tension:0.4,pointRadius:1,borderDash:[5,3]},
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmtS(c.raw)}`}}},scales:{x:{title:{display:true,text:'Age',color:getCSSVar('--text3'),font:{size:10}},ticks:{color:getCSSVar('--text3'),font:{size:10}},grid:{display:false}},y:{ticks:{color:getCSSVar('--text3'),font:{size:10},callback:v=>fmtShort(v)},grid:{color:getCSSVar('--border')+'55'}}}}
+    plugins:[coastPlugin],
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:28}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmtS(c.raw)}`}}},scales:{x:{title:{display:true,text:'Age',color:getCSSVar('--text3'),font:{size:10}},ticks:{color:getCSSVar('--text3'),font:{size:10}},grid:{display:false}},y:{ticks:{color:getCSSVar('--text3'),font:{size:10},callback:v=>fmtShort(v)},grid:{color:getCSSVar('--border')+'55'}}}}
   });
 }
 
