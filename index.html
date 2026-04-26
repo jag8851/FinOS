@@ -346,7 +346,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.3</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.4</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -468,7 +468,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.3</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.4</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -741,14 +741,35 @@ tbody td.primary{color:var(--text);font-weight:500;}
 
       <!-- ═══ FIRE CALCULATOR ═══ -->
       <div id="tab-fire" class="tab-panel">
-        <div style="display:flex;gap:0;align-items:flex-start">
+        <div style="display:flex;gap:0;align-items:flex-start;position:relative">
+
+          <!-- Collapsed tab — hugs the LEFT sidebar border, shown only when collapsed -->
+          <button id="fire-side-toggle-collapsed" onclick="toggleFireSide()" title="Expand Parameters"
+            style="display:none;position:fixed;left:var(--sidebar);top:50%;transform:translateY(-50%);
+                   z-index:40;width:26px;height:80px;
+                   background:var(--surface2);border:1px solid var(--border);border-left:none;
+                   border-radius:0 var(--radius-xs) var(--radius-xs) 0;
+                   color:var(--text3);font-size:0.6rem;cursor:pointer;
+                   display:none;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+                   writing-mode:vertical-rl;padding:8px 4px;letter-spacing:0.08em;
+                   font-family:'DM Mono',monospace;transition:all 0.15s;">▶ Params</button>
+
           <!-- Left panel (collapsible) -->
-          <div id="fire-side-panel" style="width:292px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;margin-right:0;transition:width 0.3s,opacity 0.3s;overflow:hidden;opacity:1">
-            <div class="card" style="width:280px">
-              <div class="card-header" style="justify-content:space-between">
+          <div id="fire-side-panel"
+               style="width:292px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;
+                      transition:width 0.28s ease,opacity 0.2s ease;overflow:hidden;opacity:1">
+            <div class="card" style="width:280px;position:relative">
+              <div class="card-header">
                 <span class="card-title">Parameters</span>
-                <!-- Toggle button attached to card header right edge -->
-                <button id="fire-side-toggle" onclick="toggleFireSide()" title="Collapse panel" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);color:var(--text3);width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;transition:all 0.15s;flex-shrink:0;">◀</button>
+                <!-- Collapse arrow — left side of card, vertically centered -->
+                <button id="fire-side-toggle" onclick="toggleFireSide()" title="Collapse"
+                  style="position:absolute;left:-1px;top:50%;transform:translateY(-50%);
+                         width:18px;height:40px;
+                         background:var(--surface2);border:1px solid var(--border);border-right:none;
+                         border-radius:var(--radius-xs) 0 0 var(--radius-xs);
+                         color:var(--text3);font-size:0.65rem;cursor:pointer;
+                         display:flex;align-items:center;justify-content:center;
+                         transition:all 0.15s;">◀</button>
               </div>
               <div class="card-body" id="fire-main-sliders"></div>
             </div>
@@ -762,17 +783,14 @@ tbody td.primary{color:var(--text);font-weight:500;}
               </div>
             </div>
           </div>
-          <!-- Collapsed-state toggle (shown only when panel is hidden) -->
-          <button id="fire-side-toggle-collapsed" onclick="toggleFireSide()" title="Expand panel" style="display:none;flex-shrink:0;width:28px;align-self:stretch;background:var(--surface2);border:1px solid var(--border);border-right:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);color:var(--text3);font-size:0.75rem;cursor:pointer;transition:all 0.15s;writing-mode:vertical-rl;padding:12px 0;margin-right:0;">▶ Parameters</button>
+
           <!-- Right outputs -->
           <div style="flex:1;display:flex;flex-direction:column;gap:14px;min-width:0;margin-left:16px" id="fire-right-panel">
             <div id="fire-status-card"></div>
             <div id="fire-progress-wrap"></div>
             <div class="stats-grid" id="fire-stats-grid" style="grid-template-columns:repeat(2,1fr)"></div>
             <div class="card">
-              <div class="card-header">
-                <span class="card-title">Portfolio Growth vs Coast FIRE Target</span>
-              </div>
+              <div class="card-header"><span class="card-title">Portfolio Growth vs Coast FIRE Target</span></div>
               <div class="card-body">
                 <div class="chart-container" style="height:200px"><canvas id="fire-chart"></canvas></div>
                 <div class="chart-legend" style="margin-top:10px">
@@ -1237,7 +1255,11 @@ function renderNetWorthUI(){
   if(!nw||!nw.months.length){showEmptyHome('No Net Worth data found. Check your Google Sheet has a "Net Worth" tab with YYYY-MM column headers.');return;}
   document.getElementById('home-data').style.display='block';
   document.getElementById('home-empty').style.display='none';
-  const lastMonth=nw.months[nw.months.length-1];
+  // Find last month that actually has Net Worth data (not just a header)
+  let lastMonth=nw.months[nw.months.length-1];
+  for(let i=nw.months.length-1;i>=0;i--){
+    if(nw.netWorth[nw.months[i]]){lastMonth=nw.months[i];break;}
+  }
   const latestNW=nw.netWorth[lastMonth]||0;
   const latestAssets=nw.assets[lastMonth]||0;
   const latestLiab=nw.liabilities[lastMonth]||0;
@@ -1799,16 +1821,20 @@ function toggleFireKeepContrib(){
 function toggleFireSide(){
   fireSideVisible=!fireSideVisible;
   const panel=document.getElementById('fire-side-panel');
-  const btnCollapsed=document.getElementById('fire-side-toggle-collapsed');
+  const btnExpand=document.getElementById('fire-side-toggle-collapsed');
   const right=document.getElementById('fire-right-panel');
   if(fireSideVisible){
-    panel.style.width='292px';panel.style.opacity='1';panel.style.overflow='';
-    if(btnCollapsed)btnCollapsed.style.display='none';
+    panel.style.width='292px';
+    panel.style.opacity='1';
+    panel.style.overflow='visible';
+    if(btnExpand){btnExpand.style.display='none';}
     if(right)right.style.marginLeft='16px';
   }else{
-    panel.style.width='0';panel.style.opacity='0';panel.style.overflow='hidden';
-    if(btnCollapsed)btnCollapsed.style.display='flex';
-    if(right)right.style.marginLeft='0';
+    panel.style.width='0';
+    panel.style.opacity='0';
+    panel.style.overflow='hidden';
+    if(btnExpand){btnExpand.style.display='flex';}
+    if(right)right.style.marginLeft='8px';
   }
 }
 
@@ -1837,57 +1863,112 @@ function autoPopulateFIRE(){
 
 function calcFIRE(){
   const{age,retireAge,portfolio,monthly,spending,returnRate,inflation,swr,ss}=FS;
-  const r=returnRate/100,inf=inflation/100,swrD=swr/100;
-  const yrs=retireAge-age;if(yrs<=0)return null;
-  const spF=spending*Math.pow(1+inf,yrs),ssF=ss*Math.pow(1+inf,yrs);
-  const fireNum=Math.max(0,spF-ssF)/swrD;
-  const fireToday=fireNum/Math.pow(1+inf,yrs);
-  const coastNum=fireNum/Math.pow(1+r,yrs);
-  const gap=Math.max(0,coastNum-portfolio);
-  const already=portfolio>=coastNum;
-  const pct=Math.min(1,portfolio/(coastNum||1));
-  const rows=[];let cAge=null,cPort=null;
-  for(let y=0;y<=yrs;y++){
-    const a=age+y,ytr=retireAge-a;
-    const ct=ytr>0?fireNum/Math.pow(1+r,ytr):fireNum;
-    let p;
-    if(fireKeepContrib||cAge===null){p=y===0?portfolio:portfolio*Math.pow(1+r,y)+monthly*12*(Math.pow(1+r,y)-1)/r;}
-    else{p=cPort*Math.pow(1+r,a-cAge);}
-    if(cAge===null&&p>=ct){cAge=a;cPort=p;}
-    rows.push({age:a,portfolio:Math.round(p),coastTarget:Math.round(ct)});
-  }
-  // If never hit coast target: calc extra monthly needed AND alternate retire age
-  let extraNeeded=null, altRetireAge=null;
-  if(!already&&cAge===null){
-    // Binary search: how much MORE per month to hit coastNum by retireAge?
-    let lo=0,hi=50000;
-    for(let iter=0;iter<60;iter++){
-      const mid=(lo+hi)/2;
-      const totalMonthly=monthly+mid;
-      const fv=portfolio*Math.pow(1+r,yrs)+totalMonthly*12*(Math.pow(1+r,yrs)-1)/(r||0.0001);
-      if(fv>=coastNum)hi=mid;else lo=mid;
-    }
-    extraNeeded=Math.max(0,Math.round(hi));
+  const r=returnRate/100;        // annual nominal return
+  const inf=inflation/100;       // annual inflation
+  const swrD=swr/100;            // safe withdrawal rate decimal
+  const yrs=retireAge-age;
+  if(yrs<=0)return null;
 
-    // Binary search: what later retire age works with CURRENT monthly?
-    // coastNum shrinks as retire age gets later (less time needed to compound)
-    let loAge=retireAge,hiAge=retireAge+40;
-    for(let iter=0;iter<60;iter++){
-      const midAge=Math.round((loAge+hiAge)/2);
-      const yrsToMid=midAge-age;
-      if(yrsToMid<=0){loAge=midAge;continue;}
-      const spFmid=spending*Math.pow(1+inf,yrsToMid),ssFmid=ss*Math.pow(1+inf,yrsToMid);
-      const fireNumMid=Math.max(0,spFmid-ssFmid)/swrD;
-      const coastNumMid=fireNumMid/Math.pow(1+r,yrsToMid);
-      const fvMid=portfolio*Math.pow(1+r,yrsToMid)+monthly*12*(Math.pow(1+r,yrsToMid)-1)/(r||0.0001);
-      if(fvMid>=coastNumMid)hiAge=midAge;else loAge=midAge;
-      if(hiAge-loAge<=1)break;
-    }
-    altRetireAge=hiAge<=retireAge+40?hiAge:null;
+  // ── Step 1: FIRE Number (how much you need at retirement) ──────────────
+  // Adjust spending and SS for inflation to retirement date
+  const spendAtRetire = spending * Math.pow(1+inf, yrs);
+  const ssAtRetire    = ss      * Math.pow(1+inf, yrs);
+  const fireNum       = Math.max(0, spendAtRetire - ssAtRetire) / swrD;
+
+  // FIRE number in today's dollars
+  const fireToday = fireNum / Math.pow(1+inf, yrs);
+
+  // ── Step 2: Coast FIRE Number (what you need TODAY to coast) ───────────
+  // coastNum = fireNum discounted back by return rate over yrs
+  const coastNum = fireNum / Math.pow(1+r, yrs);
+  const gap      = Math.max(0, coastNum - portfolio);
+  const already  = portfolio >= coastNum;
+  const pct      = Math.min(1, portfolio / (coastNum || 1));
+
+  // ── Step 3: Build year-by-year projection ──────────────────────────────
+  // FV of lump sum + FV of annual contributions (monthly * 12)
+  // FV = P*(1+r)^n + PMT * [((1+r)^n - 1) / r]
+  const annual = monthly * 12;
+  function portfolioAt(years, keepContrib){
+    if(years <= 0) return portfolio;
+    const growth = Math.pow(1+r, years);
+    const contribFV = (r > 0)
+      ? annual * (growth - 1) / r
+      : annual * years;
+    // If keepContrib=false and we've already coasted, just let lump grow
+    // (handled below per-year)
+    return portfolio * growth + contribFV;
   }
-  return{fireNum,fireToday,coastNum,gap,already,pct,rows,coastAge:cAge,yrsToCoast:cAge?cAge-age:null,yrs,extraNeeded,altRetireAge};
+
+  const rows = [];
+  let cAge = null, cPortVal = null;
+  for(let y = 0; y <= yrs; y++){
+    const a = age + y;
+    const yRemain = retireAge - a;
+    // Coast target shrinks as we approach retirement (less time to compound)
+    const coastTarget = yRemain > 0
+      ? fireNum / Math.pow(1+r, yRemain)
+      : fireNum;
+
+    let pVal;
+    if(fireKeepContrib || cAge === null){
+      // Still contributing
+      pVal = portfolioAt(y, true);
+    } else {
+      // Coasted — just compound from the coast point, no new contributions
+      const yrsSinceCoast = a - cAge;
+      pVal = cPortVal * Math.pow(1+r, yrsSinceCoast);
+    }
+
+    if(cAge === null && pVal >= coastTarget){
+      cAge = a;
+      cPortVal = pVal;
+    }
+    rows.push({age:a, portfolio:Math.round(pVal), coastTarget:Math.round(coastTarget)});
+  }
+
+  // ── Step 4: If never coasted — find extra $/mo needed & alt retire age ─
+  let extraNeeded = null, altRetireAge = null;
+
+  if(!already && cAge === null){
+    // Binary search: extra monthly contributions to hit coastNum by retireAge
+    let lo = 0, hi = 100000;
+    for(let i = 0; i < 80; i++){
+      const mid = (lo + hi) / 2;
+      const totalAnnual = (monthly + mid) * 12;
+      const fv = portfolio * Math.pow(1+r, yrs) +
+                 (r > 0 ? totalAnnual * (Math.pow(1+r, yrs) - 1) / r : totalAnnual * yrs);
+      if(fv >= coastNum) hi = mid; else lo = mid;
+    }
+    extraNeeded = Math.max(0, Math.ceil(hi));
+
+    // Binary search: what LATER retire age lets current monthly work?
+    // As retireAge increases: coastNum decreases (less time to grow),
+    // but your portfolio FV increases (more years to contribute).
+    // Find crossover point.
+    let loAge = retireAge, hiAge = retireAge + 50;
+    for(let i = 0; i < 80; i++){
+      const midAge = Math.round((loAge + hiAge) / 2);
+      const yrsM   = midAge - age;
+      if(yrsM <= 0){ loAge = midAge; continue; }
+      const spM    = spending * Math.pow(1+inf, yrsM);
+      const ssM    = ss      * Math.pow(1+inf, yrsM);
+      const fireM  = Math.max(0, spM - ssM) / swrD;
+      const coastM = fireM / Math.pow(1+r, yrsM);
+      const fvM    = portfolio * Math.pow(1+r, yrsM) +
+                     (r > 0 ? annual * (Math.pow(1+r, yrsM) - 1) / r : annual * yrsM);
+      if(fvM >= coastM) hiAge = midAge; else loAge = midAge;
+      if(hiAge - loAge <= 1) break;
+    }
+    altRetireAge = (hiAge <= retireAge + 50) ? hiAge : null;
+  }
+
+  return{
+    fireNum, fireToday, coastNum, gap, already, pct, rows,
+    coastAge:cAge, yrsToCoast:cAge ? cAge-age : null,
+    yrs, extraNeeded, altRetireAge
+  };
 }
-
 function renderFIRE(){
   const c=calcFIRE();if(!c)return;
   const{fireNum,fireToday,coastNum,gap,already,pct,rows,coastAge,yrsToCoast,yrs,extraNeeded,altRetireAge}=c;
@@ -2155,7 +2236,10 @@ function updateDevRefMap(){
     const rowArr=nw.labelRowMap?nw.labelRowMap[lbl.toLowerCase()]:null;
     const rowIdx=rowArr?nw.allRows.indexOf(rowArr)+2:'?'; // +2 for 1-index + header row
     const cell=rowArr?`${colLetter(nw.labelColIdx)}${rowIdx}`:'not found';
-    const latestVal=vals&&last?(vals[last]!==undefined?fmt(vals[last]):'$0.00'):'—';
+    // find last month with actual data for this label
+    let devLast=last;
+    if(vals){for(let i=nw.months.length-1;i>=0;i--){if(nw.months[i]&&vals[nw.months[i]]){devLast=nw.months[i];break;}}}
+    const latestVal=vals&&devLast&&vals[devLast]?fmt(vals[devLast]):'$0.00 (no data)';
     lines.push(`${lbl.padEnd(17)}| ${cell.padEnd(6)}| ${latestVal}`);
   });
   el.textContent=lines.join('\n');
@@ -2166,26 +2250,25 @@ async function loadDevPreview(){
   if(!accessToken||!settings.sheetId){el.textContent='Not signed in or no sheet ID.';return;}
   el.textContent='Loading...';
   try{
-    const resp=await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/Net%20Worth!A1:AD12`,
-      {headers:sheetsHeaders()}
-    );
+    const range=encodeURIComponent("'Net Worth'!A1:AF15");
+    const url=`https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${range}`;
+    const resp=await fetch(url,{headers:sheetsHeaders()});
     const data=await resp.json();
+    if(data.error){el.textContent='API Error '+data.error.code+': '+data.error.message;return;}
     const rows=data.values||[];
-    if(!rows.length){el.textContent='No data returned.';return;}
-    // Render as fixed-width grid
-    const COL_W=12;
-    let out='';
+    if(!rows.length){el.textContent='No data returned. Check sheet name is exactly "Net Worth".';return;}
+    const COL_W=13;
+    const maxCols=Math.max(...rows.map(r=>r.length));
+    let lines=[`Fetched ${rows.length} rows x ${maxCols} cols`,''];
     rows.forEach((row,ri)=>{
       const cells=[];
-      for(let ci=0;ci<30;ci++){
-        const val=String(row[ci]||'').slice(0,COL_W-1);
+      for(let ci=0;ci<Math.min(maxCols,28);ci++){
+        const val=String(row[ci]===undefined?'·':row[ci]).slice(0,COL_W-1);
         cells.push(val.padEnd(COL_W));
       }
-      out+=`Row ${String(ri+1).padStart(2,'0')}: ${cells.join('')}
-`;
+      lines.push('Row '+String(ri+1).padStart(2,'0')+': '+cells.join(''));
     });
-    el.textContent=out;
+    el.textContent=lines.join('\n');
   }catch(e){el.textContent='Error: '+e.message;}
 }
 
