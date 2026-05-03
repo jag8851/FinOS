@@ -349,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.02</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.04</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.02</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.04</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -1119,7 +1119,34 @@ async function manualSignIn(){if(!tokenClient)await loadGoogleLibs();tokenClient
 function sheetsUrl(path){return `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/${path}`;}
 function sheetsHeaders(){return{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'};}
 async function sheetsGet(path){const r=await fetch(sheetsUrl(path),{headers:sheetsHeaders()});if(r.status===401){accessToken=null;sessionStorage.removeItem('cf_token');}return r;}
-async function sheetsPost(path,body){return fetch(sheetsUrl(path),{method:'POST',headers:sheetsHeaders(),body:JSON.stringify(body)});}
+// Silently refresh token if expired, then retry once
+async function ensureFreshToken(){
+  if(!tokenClient)return;
+  // Test current token with a lightweight call
+  try{
+    const test=await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token='+accessToken);
+    const j=await test.json();
+    // If expires_in < 120 seconds or error, refresh
+    if(j.error||parseInt(j.expires_in||0)<120){
+      await new Promise(resolve=>{
+        tokenClient.requestAccessToken({prompt:''});
+        // onSignedIn callback will fire and update accessToken
+        setTimeout(resolve,3000);
+      });
+    }
+  }catch(e){/* network error — try anyway */}
+}
+
+async function sheetsPost(path,body){
+  await ensureFreshToken();
+  const resp=await fetch(sheetsUrl(path),{method:'POST',headers:sheetsHeaders(),body:JSON.stringify(body)});
+  if(resp.status===401){
+    // Force re-auth and retry once
+    await new Promise(resolve=>{tokenClient.requestAccessToken({prompt:''});setTimeout(resolve,3000);});
+    return fetch(sheetsUrl(path),{method:'POST',headers:sheetsHeaders(),body:JSON.stringify(body)});
+  }
+  return resp;
+}
 async function sheetsPut(path,body){return fetch(sheetsUrl(path),{method:'PUT',headers:sheetsHeaders(),body:JSON.stringify(body)});}
 async function batchGetSheets(ranges){
   apiCallCount++;
@@ -1205,7 +1232,7 @@ async function refreshData(){
   if(!accessToken||!settings.sheetId){showToast('Not connected to Google','error');return;}
   document.getElementById('refresh-btn').innerHTML='<div class="spinner" style="width:14px;height:14px;border-width:2px"></div>';
   try{
-    const data=await batchGetSheets(['Spending!A:J','Income!A:H','Rules!A:C','Categories!A:B','Net Worth!A1:ZZ200']);
+    const data=await batchGetSheets(['Spending!A:J','Income!A:H','Rules!A:D','Categories!A:B','Net Worth!A1:ZZ200']);
     const[sp,inc,rules,cats,nw]=data.valueRanges;
     cache.spending=parseRows(sp?.values,[]);
     cache.income=parseRows(inc?.values,[]);
@@ -1401,10 +1428,60 @@ function drawNWChart(){
     {label:'Investments',data:months.map(m=>nw.investments[m]||0),borderColor:'#ab47bc',backgroundColor:'transparent',borderWidth:1.5,pointRadius:1,tension:0.4},
     {label:'Savings',data:months.map(m=>nw.savings[m]||0),borderColor:'#f59e0b',backgroundColor:'transparent',borderWidth:1.5,pointRadius:1,tension:0.4},
   ];
+  // Plugin: draw year labels centered under each year's months
+  const nwYearBandPlugin={
+    id:'nwYearBand',
+    afterDraw(chart){
+      const{ctx,chartArea,scales}=chart;
+      const text3c=getCSSVar('--text3');
+      // Group visible months by year
+      const years={};
+      months.forEach((m,i)=>{
+        const yr=m.split('-')[0];
+        if(!years[yr])years[yr]={first:i,last:i};
+        else years[yr].last=i;
+      });
+      ctx.save();
+      ctx.font='bold 9px DM Mono,monospace';
+      ctx.fillStyle=text3c;
+      ctx.textAlign='center';
+      Object.entries(years).forEach(([yr,{first,last}])=>{
+        const x1=scales.x.getPixelForTick(first);
+        const x2=scales.x.getPixelForTick(last);
+        const cx=(x1+x2)/2;
+        const y=chartArea.bottom+14;
+        ctx.fillText(yr,cx,y);
+      });
+      ctx.restore();
+    }
+  };
   if(nwChartInst)nwChartInst.destroy();
   nwChartInst=new Chart(document.getElementById('nw-chart'),{
     type:'line',data:{labels:months,datasets},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},scales:{x:{ticks:{color:text3,font:{size:10},maxTicksLimit:8},grid:{color:'transparent'}},y:{ticks:{color:text3,font:{size:10},callback:v=>fmtShort(v)},grid:{color:getCSSVar('--border')+'55'}}}}
+    plugins:[nwYearBandPlugin],
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      layout:{padding:{bottom:18}},
+      plugins:{
+        legend:{display:false},
+        tooltip:{mode:'index',intersect:false,callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}
+      },
+      scales:{
+        x:{
+          ticks:{
+            color:text3,font:{size:10},maxRotation:0,
+            callback(val,idx){
+              const m=months[idx];
+              if(!m)return '';
+              const mo=parseInt(m.split('-')[1])-1;
+              return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mo];
+            }
+          },
+          grid:{color:'transparent'}
+        },
+        y:{ticks:{color:text3,font:{size:10},callback:v=>fmtShort(v)},grid:{color:getCSSVar('--border')+'55'}}
+      }
+    }
   });
   const lgd=document.getElementById('nw-legend');lgd.innerHTML=datasets.map(d=>`<div class="legend-item"><div class="legend-dot" style="background:${d.borderColor}"></div>${d.label}</div>`).join('');
 }
@@ -2319,80 +2396,54 @@ function handleFileSelect(e){if(e.target.files[0])parseImportFile(e.target.files
 function parseImportFile(file){const type=document.getElementById('import-file-type').value;if(!file.name.endsWith('.csv')){showToast('Please upload a .csv file','error');return;}Papa.parse(file,{header:true,skipEmptyLines:true,complete:result=>{if(type==='capital-one')processCapitalOneCsv(result.data);else showToast('This bank format is coming soon!','info');}});}
 const STRIP_PREFIXES=[/^SQ\s*\*/i,/^TST\*\s*/i,/^SPO\*/i,/^WL\s*\*/i];
 function stripPrefixes(desc){let d=(desc||'').trim();for(const p of STRIP_PREFIXES)d=d.replace(p,'').trim();return d;}
-// ── Tier 1: exact rule match ─────────────────────────────────────
+// ── Matching system — driven entirely by Rules sheet ────────────
+// Rules sheet columns: Match Pattern | Clean Name | Category | Type
+// Type: 'Hard' (default) = exact substring match (case-insensitive)
+//       'Soft'           = any word in Match Pattern found in description
+//       'Fuzzy'          = kept for legacy, treated as Soft
+
+function toTitleCase(str){
+  return str.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+}
+
 function matchRule(desc){
   const d=desc.toUpperCase();
-  return cache.rules.find(r=>r['Match Pattern']&&d.includes(r['Match Pattern'].toUpperCase()));
+  // First pass: Hard rules (exact substring, highest priority)
+  const hard=cache.rules.find(r=>{
+    const type=(r['Type']||'Hard').trim().toLowerCase();
+    if(type!=='hard'&&type!=='')return false;
+    return r['Match Pattern']&&d.includes(r['Match Pattern'].toUpperCase());
+  });
+  if(hard)return hard;
+  // Second pass: Soft rules (each word in Match Pattern must appear in desc)
+  const soft=cache.rules.find(r=>{
+    const type=(r['Type']||'').trim().toLowerCase();
+    if(type!=='soft'&&type!=='fuzzy')return false;
+    if(!r['Match Pattern'])return false;
+    const words=r['Match Pattern'].toUpperCase().split(/\s+/).filter(Boolean);
+    return words.every(w=>d.includes(w));
+  });
+  return soft||null;
 }
 
-// ── Tier 2: keyword hints → category ─────────────────────────────
-// Keywords that reliably indicate a category regardless of merchant name
-const KEYWORD_HINTS=[
-  // Entertainment
-  {words:['ZOO','AQUARIUM','MUSEUM','PLANETARIUM','ARBORETUM','BOTANICAL','GARDEN','GALLERY','EXHIBIT',
-          'THEATER','THEATRE','CINEMA','IMAX','AMC','REGAL','MOVIE','CONCERT','FESTIVAL','FAIR',
-          'ARCADE','BOWLING','MINIGOLF','ESCAPE ROOM','TRAMPOLINE','TOPGOLF','DAVE & BUSTER',
-          'TICKETMASTER','EVENTBRITE','STUBHUB','NATIONAL PARK','STATE PARK'],
-   category:'Entertainment'},
-  // Dining
-  {words:['RESTAURANT','PIZZA','BURGER','SUSHI','TACO','BURRITO','GRILL','BISTRO','CAFE','DINER',
-          'BAKERY','DONUT','BAGEL','SANDWICH','DELI','BBQ','STEAKHOUSE','SEAFOOD','NOODLE',
-          'RAMEN','POKE','SMOOTHIE','JUICE BAR','ICE CREAM','FROZEN YOGURT','FROZYO','CHIPOTLE',
-          'PANERA','SUBWAY','MCDONALDS','WENDYS','CHICK-FIL-A','WHATABURGER','RAISING CANES',
-          'FIVE GUYS','SHAKE SHACK','IN-N-OUT','COOKOUT','COOK OUT'],
-   category:'Dining Out'},
-  // Groceries
-  {words:['GROCERY','SUPERMARKET','WHOLE FOODS','TRADER JOE','ALDI','SPROUTS','PUBLIX','SAFEWAY',
-          'GIANT','HARRIS TEETER','FOOD LION','WEGMANS','HEB','MARKET','FRESH MARKET'],
-   category:'Groceries'},
-  // Transportation
-  {words:['UBER','LYFT','TAXI','PARKING','GARAGE','LOT PARK','METRO','TRANSIT','BUS','TRAIN',
-          'AMTRAK','AIRLINE','AIRWAYS','FLIGHTS','SPIRIT','DELTA','UNITED','SOUTHWEST','JETBLUE',
-          'GAS','GASOLINE','FUEL','SHELL','EXXON','BP','CHEVRON','SUNOCO','MARATHON','SPEEDWAY',
-          'WAWA','SHEETZ','RACEWAY','HIGHWAY TOLL','EZPASS','SUNPASS'],
-   category:'Transportation'},
-  // Shopping
-  {words:['AMAZON','TARGET','WALMART','COSTCO','SAMS CLUB','BEST BUY','HOME DEPOT','LOWES',
-          'IKEA','MARSHALLS','TJ MAXX','ROSS','BURLINGTON','NORDSTROM','MACYS','KOHLS',
-          'OLD NAVY','GAP','BANANA REPUBLIC','ZARA','H&M','UNIQLO','NIKE','ADIDAS',
-          'APPLE STORE','MICROSOFT STORE','ETSY','EBAY','WAYFAIR','CHEWY'],
-   category:'Shopping'},
-  // Health
-  {words:['PHARMACY','WALGREENS','RITE AID','CVS','DOCTOR','DENTAL','DENTIST','OPTICIAN',
-          'VISION','HOSPITAL','CLINIC','URGENT CARE','THERAPY','THERAPIST','COUNSELING',
-          'GYM','FITNESS','PLANET FITNESS','ANYTIME FITNESS','LA FITNESS','YMCA','CROSSFIT',
-          'YOGA','PILATES','MASSAGE','CHIROPRACTOR'],
-   category:'Health'},
-  // Subscriptions
-  {words:['NETFLIX','HULU','DISNEY+','HBO','PEACOCK','PARAMOUNT','APPLE TV','SPOTIFY',
-          'YOUTUBE','AMAZON PRIME','TWITCH','PATREON','CRUNCHYROLL','ADOBE','MICROSOFT 365',
-          'GOOGLE ONE','DROPBOX','LASTPASS','NORD VPN','EXPRESS VPN'],
-   category:'Subscriptions'},
-  // Travel
-  {words:['HOTEL','MOTEL','INN','RESORT','AIRBNB','VRBO','MARRIOTT','HILTON','HYATT',
-          'HOLIDAY INN','HAMPTON INN','EXPEDIA','PRICELINE','BOOKING.COM','KAYAK','TRIVAGO'],
-   category:'Travel'},
-];
-
-function matchKeyword(desc){
-  const d=desc.toUpperCase();
-  for(const hint of KEYWORD_HINTS){
-    for(const word of hint.words){
-      if(d.includes(word)){
-        // Find or build a pseudo-rule result
-        return{
-          'Clean Name': toTitleCase(desc),
-          'Category':   hint.category,
-          _keywordMatch: word
-        };
-      }
-    }
+function matchFuzzy(desc){
+  // Dice coefficient bigram similarity against past transaction clean names
+  const candidates=cache.spending.filter(r=>r['Category']&&(r['Clean Name']||r['Description']));
+  if(!candidates.length)return null;
+  let best=null,bestScore=0;
+  for(const r of candidates){
+    const name=r['Clean Name']||r['Description']||'';
+    const score=diceSimilarity(desc,name);
+    if(score>bestScore){bestScore=score;best=r;}
   }
-  return null;
+  return(bestScore>0.45&&best)?{
+    'Clean Name':toTitleCase(desc),
+    'Category':best['Category'],
+    _fuzzyScore:bestScore,
+    _fuzzyMatch:best['Clean Name']||best['Description']
+  }:null;
 }
 
-// ── Tier 3: fuzzy match against past categorized transactions ─────
-// Uses Dice coefficient (bigram similarity) — no dependencies needed
 function bigrams(str){
   const s=str.toUpperCase().replace(/[^A-Z0-9 ]/g,'');
   const bg=new Set();
@@ -2405,32 +2456,6 @@ function diceSimilarity(a,b){
   let inter=0;
   ba.forEach(g=>{if(bb.has(g))inter++;});
   return(2*inter)/(ba.size+bb.size);
-}
-
-function matchFuzzy(desc){
-  // Only run if we have past transactions with categories
-  const candidates=cache.spending.filter(r=>r['Category']&&r['Clean Name']||r['Description']);
-  if(!candidates.length)return null;
-  let best=null,bestScore=0;
-  for(const r of candidates){
-    const name=r['Clean Name']||r['Description']||'';
-    const score=diceSimilarity(desc,name);
-    if(score>bestScore){bestScore=score;best=r;}
-  }
-  // Only suggest if reasonably confident (>0.45)
-  if(bestScore>0.45&&best){
-    return{
-      'Clean Name':  toTitleCase(desc),
-      'Category':    best['Category'],
-      _fuzzyScore:   bestScore,
-      _fuzzyMatch:   best['Clean Name']||best['Description']
-    };
-  }
-  return null;
-}
-
-function toTitleCase(str){
-  return str.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
 }
 function getBucket(category){const row=cache.categories.find(r=>r['Category']===category);return row?row['Bucket']||'Discretionary':'Discretionary';}
 function getCategoryFromCapOneCategory(c){const MAP={'Dining/Restaurant':'Dining Out','Entertainment':'Entertainment','Gas/Automotive':'Transportation','Groceries':'Groceries','Healthcare':'Health','Other Travel':'Travel','Shopping':'Shopping','Merchandise':'Shopping','Personal Care':'Health','Services/Supplies':'Miscellaneous','Other Fees':'Miscellaneous','Insurance':'Insurance','Education':'Miscellaneous'};return MAP[c]||null;}
@@ -2448,7 +2473,7 @@ function processCapitalOneCsv(data){
     if(!amount||!date)continue;
     const strippedDesc=stripPrefixes(rawDesc);
     let cleanName='',category='',bucket='',status='unknown';
-    // Tier 1: exact rule
+    // Tier 1: Rules sheet (Hard then Soft)
     const rule=matchRule(strippedDesc);
     if(rule){
       cleanName=rule['Clean Name']||toTitleCase(strippedDesc);
@@ -2456,33 +2481,24 @@ function processCapitalOneCsv(data){
       bucket=getBucket(category);
       status='matched';
     } else {
-      // Tier 2: keyword hint
-      const kw=matchKeyword(strippedDesc);
-      if(kw){
-        cleanName=kw['Clean Name'];
-        category=kw['Category'];
-        bucket=getBucket(category);
-        status='suggested'; // editable — user can confirm or change
+      // Tier 2: Capital One's own category label
+      const cap1Cat=getCategoryFromCapOneCategory(row['Category']);
+      if(cap1Cat){
+        cleanName=toTitleCase(strippedDesc);
+        category=cap1Cat;
+        bucket=getBucket(cap1Cat);
+        status='suggested';
       } else {
-        // Tier 3: Capital One category mapping
-        const cap1Cat=getCategoryFromCapOneCategory(row['Category']);
-        if(cap1Cat){
-          cleanName=toTitleCase(strippedDesc);
-          category=cap1Cat;
-          bucket=getBucket(cap1Cat);
+        // Tier 3: fuzzy match against past transactions
+        const fuzzy=matchFuzzy(strippedDesc);
+        if(fuzzy){
+          cleanName=fuzzy['Clean Name'];
+          category=fuzzy['Category'];
+          bucket=getBucket(category);
           status='suggested';
         } else {
-          // Tier 4: fuzzy match against past transactions
-          const fuzzy=matchFuzzy(strippedDesc);
-          if(fuzzy){
-            cleanName=fuzzy['Clean Name'];
-            category=fuzzy['Category'];
-            bucket=getBucket(category);
-            status='suggested';
-          } else {
-            cleanName=toTitleCase(strippedDesc);
-            status='unknown';
-          }
+          cleanName=toTitleCase(strippedDesc);
+          status='unknown';
         }
       }
     }
@@ -2565,7 +2581,7 @@ async function initSheet(){
     const seeds={
       'Spending':[['Date','Account','Description','Clean Name','Category','Bucket','Amount','Month','Source','Dedup Hash']],
       'Income':[['Date','Source','Gross','Taxes','Net','401k','ESPP','Notes']],
-      'Rules':[['Match Pattern','Clean Name','Category'],['WENDYS','Wendy\'s','Dining Out'],['STARBUCKS','Starbucks','Dining Out'],['KROGER','Kroger','Groceries'],['SHELL OIL','Shell','Transportation'],['CAPITAL ONE MOBILE PYMT','CC Payment','Transfer'],['WM SUPERCENTER','Walmart','Groceries'],['CHICK FIL A','Chick-fil-A','Dining Out'],['CAVA','CAVA','Dining Out'],['CVS','CVS Pharmacy','Health'],['GREAT CLIPS','Great Clips','Health']],
+      'Rules':[['Match Pattern','Clean Name','Category','Type'],['WENDYS',"Wendy's",'Dining Out','Hard'],['STARBUCKS','Starbucks','Dining Out','Hard'],['KROGER','Kroger','Groceries','Hard'],['SHELL OIL','Shell','Transportation','Hard'],['CAPITAL ONE MOBILE PYMT','CC Payment','Transfer','Hard'],['WM SUPERCENTER','Walmart','Groceries','Hard'],['CHICK FIL A','Chick-fil-A','Dining Out','Hard'],['CAVA','CAVA','Dining Out','Hard'],['CVS','CVS Pharmacy','Health','Hard'],['GREAT CLIPS','Great Clips','Health','Hard']],
       'Categories':[['Category','Bucket'],['Rent','Fixed'],['Utilities','Fixed'],['Insurance','Fixed'],['Phone','Fixed'],['Student Loans','Fixed'],['Subscriptions','Fixed'],['Groceries','Variable'],['Transportation','Variable'],['Health','Variable'],['401(k)','S & I'],['Roth IRA','S & I'],['ESPP','S & I'],['Brokerage','S & I'],['Savings','S & I'],['Giving','S & I'],['Dining Out','Discretionary'],['Entertainment','Discretionary'],['Shopping','Discretionary'],['Travel','Discretionary'],['Miscellaneous','Discretionary'],['Transfer','Transfer']]
     };
     for(const[tab,data]of Object.entries(seeds))await sheetsPut(`values/${encodeURIComponent(tab)}!A1?valueInputOption=RAW`,{values:data});
