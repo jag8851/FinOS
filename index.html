@@ -349,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.9</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.0</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.9</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.0</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -1253,23 +1253,42 @@ function processNetWorth(){
   const raw=cache.netWorthRaw;
   if(!raw||raw.length<2){cache.netWorth=null;return;}
 
-  // Known layout: row 0 = headers (A1:C1 blank, months start at D1 = index 3)
-  //               col C = index 2 = row labels ("Net Worth", "Assets", etc.)
-  //               values at intersection of label row × month col
+  // Dynamically detect layout:
+  // 1. Scan row 0 to find first YYYY-MM cell → that column is where months start
+  // 2. Labels are in the column immediately before the first month column
   const headerRow=raw[0]||[];
-  const LABEL_COL=2; // column C
+  const MONTH_RE=/^\d{4}-\d{2}$/;
 
-  // Build month -> col index from row 0, starting at col 3 (D)
+  // Find first month column
+  let firstMonthCol=-1;
+  for(let ci=0;ci<headerRow.length;ci++){
+    if(MONTH_RE.test(String(headerRow[ci]||'').trim())){firstMonthCol=ci;break;}
+  }
+  if(firstMonthCol<0){cache.netWorth=null;return;}
+
+  // Label column = column just before months
+  // But scan the data rows to confirm — find col that has known label text
+  const KNOWN=['net worth','assets','liabilities','savings','investments'];
+  let LABEL_COL=firstMonthCol-1; // default: one before months
+  // Verify: check if any data row has a known label in that col
+  // If not, try scanning all cols to the left
+  outerScan:for(let ci=firstMonthCol-1;ci>=0;ci--){
+    for(let ri=1;ri<Math.min(raw.length,15);ri++){
+      const cell=String((raw[ri]||[])[ci]||'').trim().toLowerCase();
+      if(KNOWN.includes(cell)){LABEL_COL=ci;break outerScan;}
+    }
+  }
+
+  // Build month -> col index from header row
   const monthColMap={};
   headerRow.forEach((cell,ci)=>{
-    if(ci<3)return; // skip A,B,C
     const hs=String(cell||'').trim();
-    if(/^\d{4}-\d{2}$/.test(hs)&&!(hs in monthColMap))monthColMap[hs]=ci;
+    if(MONTH_RE.test(hs)&&!(hs in monthColMap))monthColMap[hs]=ci;
   });
   const months=Object.keys(monthColMap).sort();
   if(!months.length){cache.netWorth=null;return;}
 
-  // Build label -> row array map from col C
+  // Build label -> row array map
   const labelRowMap={};
   for(let ri=1;ri<raw.length;ri++){
     const row=raw[ri]||[];
@@ -2447,7 +2466,7 @@ function updateDevRefMap(){
   let lines=[];
   lines.push(`Months found: ${months.length} (${first} → ${last})`);
   lines.push(`Month cols:   ${colLetter(firstCol)}1 → ${colLetter(lastCol)}1`);
-  lines.push(`Label col:    ${colLetter(nw.labelColIdx)} (index ${nw.labelColIdx})`);
+  lines.push(`Label col:    ${colLetter(nw.labelColIdx)} (index ${nw.labelColIdx}) | First month col: ${colLetter(Object.values(nw.monthColMap)[0])}`);
   lines.push('');
   lines.push('Label            | Cell  | Latest Value');
   lines.push('─'.repeat(46));
