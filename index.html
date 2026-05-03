@@ -349,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.0</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.02</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.0</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.02</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -2319,7 +2319,119 @@ function handleFileSelect(e){if(e.target.files[0])parseImportFile(e.target.files
 function parseImportFile(file){const type=document.getElementById('import-file-type').value;if(!file.name.endsWith('.csv')){showToast('Please upload a .csv file','error');return;}Papa.parse(file,{header:true,skipEmptyLines:true,complete:result=>{if(type==='capital-one')processCapitalOneCsv(result.data);else showToast('This bank format is coming soon!','info');}});}
 const STRIP_PREFIXES=[/^SQ\s*\*/i,/^TST\*\s*/i,/^SPO\*/i,/^WL\s*\*/i];
 function stripPrefixes(desc){let d=(desc||'').trim();for(const p of STRIP_PREFIXES)d=d.replace(p,'').trim();return d;}
-function matchRule(desc){const d=desc.toUpperCase();return cache.rules.find(r=>r['Match Pattern']&&d.includes(r['Match Pattern'].toUpperCase()));}
+// ── Tier 1: exact rule match ─────────────────────────────────────
+function matchRule(desc){
+  const d=desc.toUpperCase();
+  return cache.rules.find(r=>r['Match Pattern']&&d.includes(r['Match Pattern'].toUpperCase()));
+}
+
+// ── Tier 2: keyword hints → category ─────────────────────────────
+// Keywords that reliably indicate a category regardless of merchant name
+const KEYWORD_HINTS=[
+  // Entertainment
+  {words:['ZOO','AQUARIUM','MUSEUM','PLANETARIUM','ARBORETUM','BOTANICAL','GARDEN','GALLERY','EXHIBIT',
+          'THEATER','THEATRE','CINEMA','IMAX','AMC','REGAL','MOVIE','CONCERT','FESTIVAL','FAIR',
+          'ARCADE','BOWLING','MINIGOLF','ESCAPE ROOM','TRAMPOLINE','TOPGOLF','DAVE & BUSTER',
+          'TICKETMASTER','EVENTBRITE','STUBHUB','NATIONAL PARK','STATE PARK'],
+   category:'Entertainment'},
+  // Dining
+  {words:['RESTAURANT','PIZZA','BURGER','SUSHI','TACO','BURRITO','GRILL','BISTRO','CAFE','DINER',
+          'BAKERY','DONUT','BAGEL','SANDWICH','DELI','BBQ','STEAKHOUSE','SEAFOOD','NOODLE',
+          'RAMEN','POKE','SMOOTHIE','JUICE BAR','ICE CREAM','FROZEN YOGURT','FROZYO','CHIPOTLE',
+          'PANERA','SUBWAY','MCDONALDS','WENDYS','CHICK-FIL-A','WHATABURGER','RAISING CANES',
+          'FIVE GUYS','SHAKE SHACK','IN-N-OUT','COOKOUT','COOK OUT'],
+   category:'Dining Out'},
+  // Groceries
+  {words:['GROCERY','SUPERMARKET','WHOLE FOODS','TRADER JOE','ALDI','SPROUTS','PUBLIX','SAFEWAY',
+          'GIANT','HARRIS TEETER','FOOD LION','WEGMANS','HEB','MARKET','FRESH MARKET'],
+   category:'Groceries'},
+  // Transportation
+  {words:['UBER','LYFT','TAXI','PARKING','GARAGE','LOT PARK','METRO','TRANSIT','BUS','TRAIN',
+          'AMTRAK','AIRLINE','AIRWAYS','FLIGHTS','SPIRIT','DELTA','UNITED','SOUTHWEST','JETBLUE',
+          'GAS','GASOLINE','FUEL','SHELL','EXXON','BP','CHEVRON','SUNOCO','MARATHON','SPEEDWAY',
+          'WAWA','SHEETZ','RACEWAY','HIGHWAY TOLL','EZPASS','SUNPASS'],
+   category:'Transportation'},
+  // Shopping
+  {words:['AMAZON','TARGET','WALMART','COSTCO','SAMS CLUB','BEST BUY','HOME DEPOT','LOWES',
+          'IKEA','MARSHALLS','TJ MAXX','ROSS','BURLINGTON','NORDSTROM','MACYS','KOHLS',
+          'OLD NAVY','GAP','BANANA REPUBLIC','ZARA','H&M','UNIQLO','NIKE','ADIDAS',
+          'APPLE STORE','MICROSOFT STORE','ETSY','EBAY','WAYFAIR','CHEWY'],
+   category:'Shopping'},
+  // Health
+  {words:['PHARMACY','WALGREENS','RITE AID','CVS','DOCTOR','DENTAL','DENTIST','OPTICIAN',
+          'VISION','HOSPITAL','CLINIC','URGENT CARE','THERAPY','THERAPIST','COUNSELING',
+          'GYM','FITNESS','PLANET FITNESS','ANYTIME FITNESS','LA FITNESS','YMCA','CROSSFIT',
+          'YOGA','PILATES','MASSAGE','CHIROPRACTOR'],
+   category:'Health'},
+  // Subscriptions
+  {words:['NETFLIX','HULU','DISNEY+','HBO','PEACOCK','PARAMOUNT','APPLE TV','SPOTIFY',
+          'YOUTUBE','AMAZON PRIME','TWITCH','PATREON','CRUNCHYROLL','ADOBE','MICROSOFT 365',
+          'GOOGLE ONE','DROPBOX','LASTPASS','NORD VPN','EXPRESS VPN'],
+   category:'Subscriptions'},
+  // Travel
+  {words:['HOTEL','MOTEL','INN','RESORT','AIRBNB','VRBO','MARRIOTT','HILTON','HYATT',
+          'HOLIDAY INN','HAMPTON INN','EXPEDIA','PRICELINE','BOOKING.COM','KAYAK','TRIVAGO'],
+   category:'Travel'},
+];
+
+function matchKeyword(desc){
+  const d=desc.toUpperCase();
+  for(const hint of KEYWORD_HINTS){
+    for(const word of hint.words){
+      if(d.includes(word)){
+        // Find or build a pseudo-rule result
+        return{
+          'Clean Name': toTitleCase(desc),
+          'Category':   hint.category,
+          _keywordMatch: word
+        };
+      }
+    }
+  }
+  return null;
+}
+
+// ── Tier 3: fuzzy match against past categorized transactions ─────
+// Uses Dice coefficient (bigram similarity) — no dependencies needed
+function bigrams(str){
+  const s=str.toUpperCase().replace(/[^A-Z0-9 ]/g,'');
+  const bg=new Set();
+  for(let i=0;i<s.length-1;i++)bg.add(s.slice(i,i+2));
+  return bg;
+}
+function diceSimilarity(a,b){
+  const ba=bigrams(a),bb=bigrams(b);
+  if(!ba.size||!bb.size)return 0;
+  let inter=0;
+  ba.forEach(g=>{if(bb.has(g))inter++;});
+  return(2*inter)/(ba.size+bb.size);
+}
+
+function matchFuzzy(desc){
+  // Only run if we have past transactions with categories
+  const candidates=cache.spending.filter(r=>r['Category']&&r['Clean Name']||r['Description']);
+  if(!candidates.length)return null;
+  let best=null,bestScore=0;
+  for(const r of candidates){
+    const name=r['Clean Name']||r['Description']||'';
+    const score=diceSimilarity(desc,name);
+    if(score>bestScore){bestScore=score;best=r;}
+  }
+  // Only suggest if reasonably confident (>0.45)
+  if(bestScore>0.45&&best){
+    return{
+      'Clean Name':  toTitleCase(desc),
+      'Category':    best['Category'],
+      _fuzzyScore:   bestScore,
+      _fuzzyMatch:   best['Clean Name']||best['Description']
+    };
+  }
+  return null;
+}
+
+function toTitleCase(str){
+  return str.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+}
 function getBucket(category){const row=cache.categories.find(r=>r['Category']===category);return row?row['Bucket']||'Discretionary':'Discretionary';}
 function getCategoryFromCapOneCategory(c){const MAP={'Dining/Restaurant':'Dining Out','Entertainment':'Entertainment','Gas/Automotive':'Transportation','Groceries':'Groceries','Healthcare':'Health','Other Travel':'Travel','Shopping':'Shopping','Merchandise':'Shopping','Personal Care':'Health','Services/Supplies':'Miscellaneous','Other Fees':'Miscellaneous','Insurance':'Insurance','Education':'Miscellaneous'};return MAP[c]||null;}
 function processCapitalOneCsv(data){
@@ -2336,9 +2448,44 @@ function processCapitalOneCsv(data){
     if(!amount||!date)continue;
     const strippedDesc=stripPrefixes(rawDesc);
     let cleanName='',category='',bucket='',status='unknown';
+    // Tier 1: exact rule
     const rule=matchRule(strippedDesc);
-    if(rule){cleanName=rule['Clean Name']||strippedDesc;category=rule['Category']||'';bucket=getBucket(category);status='matched';}
-    else{cleanName=strippedDesc;const cap1Cat=getCategoryFromCapOneCategory(row['Category']);if(cap1Cat){category=cap1Cat;bucket=getBucket(cap1Cat);status='suggested';}else{status='unknown';}}
+    if(rule){
+      cleanName=rule['Clean Name']||toTitleCase(strippedDesc);
+      category=rule['Category']||'';
+      bucket=getBucket(category);
+      status='matched';
+    } else {
+      // Tier 2: keyword hint
+      const kw=matchKeyword(strippedDesc);
+      if(kw){
+        cleanName=kw['Clean Name'];
+        category=kw['Category'];
+        bucket=getBucket(category);
+        status='suggested'; // editable — user can confirm or change
+      } else {
+        // Tier 3: Capital One category mapping
+        const cap1Cat=getCategoryFromCapOneCategory(row['Category']);
+        if(cap1Cat){
+          cleanName=toTitleCase(strippedDesc);
+          category=cap1Cat;
+          bucket=getBucket(cap1Cat);
+          status='suggested';
+        } else {
+          // Tier 4: fuzzy match against past transactions
+          const fuzzy=matchFuzzy(strippedDesc);
+          if(fuzzy){
+            cleanName=fuzzy['Clean Name'];
+            category=fuzzy['Category'];
+            bucket=getBucket(category);
+            status='suggested';
+          } else {
+            cleanName=toTitleCase(strippedDesc);
+            status='unknown';
+          }
+        }
+      }
+    }
     if(/PYMT|PAYMENT/i.test(rawDesc)){category='Transfer';bucket='Transfer';status='matched';}
     if(/REWARD|CASH\s?BACK|CREDIT ADJUST/i.test(rawDesc)&&isCredit){status='skip';}
     const hash=simpleHash(`${date}|${amount}|${rawDesc}|csv-import`);
@@ -2352,8 +2499,10 @@ function renderImportPreview(){
   const tbody=document.getElementById('import-tbody');
   tbody.innerHTML=importRows.filter(r=>r.status!=='skip').map((r,i)=>{
     const rowClass=`import-row-${r.status}`;
-    const catCell=r.status==='unknown'
-      ?`<td><select class="inline-select" onchange="setImportRowCategory(${i},this.value)">${['','...assign...',...cache.categories.map(c=>c['Category'])].map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}</select></td>`
+    // Both unknown AND suggested get an editable dropdown
+    const catOptions=['','...assign...',...cache.categories.map(c=>c['Category'])].map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('');
+    const catCell=(r.status==='unknown'||r.status==='suggested')
+      ?`<td><select class="inline-select" onchange="setImportRowCategory(${i},this.value)">${catOptions}</select></td>`
       :`<td>${r.category}</td>`;
     const statusBadge={matched:'<span class="badge badge-matched">✓ Matched</span>',suggested:'<span class="badge badge-suggested">? Suggested</span>',unknown:'<span class="badge badge-unknown">✗ Unknown</span>',duplicate:'<span class="badge badge-duplicate">↩ Duplicate</span>'}[r.status]||'';
     return`<tr class="${rowClass}"><td class="mono">${r.date}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.cleanName||r.rawDesc}</td><td>${r.cleanName}</td>${catCell}<td>${r.bucket}</td><td style="text-align:right" class="amount-pos">${fmtAmt(r.amount)}</td><td>${statusBadge}</td></tr>`;
@@ -2362,7 +2511,7 @@ function renderImportPreview(){
 }
 function setImportRowCategory(i,cat){importRows[i].category=cat;importRows[i].bucket=getBucket(cat);if(cat)importRows[i].status='matched';if(cat&&importRows[i].rawDesc){const pattern=importRows[i].rawDesc.toUpperCase().slice(0,12);if(confirm(`Save rule: "${pattern}" → ${cat}?`))saveRule(pattern,importRows[i].cleanName,cat);}updateImportSummary();}
 async function saveRule(pattern,cleanName,category){if(!accessToken||!settings.sheetId)return;cache.rules.push({'Match Pattern':pattern,'Clean Name':cleanName,'Category':category});await sheetsPost(`values/Rules!A:C:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,{values:[[pattern,cleanName,category]]});}
-function updateImportSummary(){const total=importRows.filter(r=>r.status!=='skip').length;const newRows=importRows.filter(r=>r.status!=='duplicate'&&r.status!=='skip');const dups=importRows.filter(r=>r.status==='duplicate').length;const needReview=importRows.filter(r=>r.status==='unknown').length;const s=`<strong>${newRows.length}</strong> new · <strong>${dups}</strong> duplicates skipped · <strong style="color:${needReview>0?'var(--danger)':'inherit'}">${needReview}</strong> need review`;document.getElementById('import-summary').innerHTML=s;document.getElementById('import-footer-summary').innerHTML=s;document.getElementById('import-approve-btn').disabled=needReview>0||newRows.length===0;}
+function updateImportSummary(){const total=importRows.filter(r=>r.status!=='skip').length;const newRows=importRows.filter(r=>r.status!=='duplicate'&&r.status!=='skip');const dups=importRows.filter(r=>r.status==='duplicate').length;const needReview=importRows.filter(r=>r.status==='unknown').length;const suggested=importRows.filter(r=>r.status==='suggested').length;const s=`<strong>${newRows.length}</strong> new · <strong>${dups}</strong> duplicates · <strong style="color:var(--accent2)">${suggested}</strong> suggested · <strong style="color:${needReview>0?'var(--danger)':'inherit'}">${needReview}</strong> unmatched`;document.getElementById('import-summary').innerHTML=s;document.getElementById('import-footer-summary').innerHTML=s;document.getElementById('import-approve-btn').disabled=needReview>0||newRows.length===0;}
 async function approveImport(){
   if(!accessToken||!settings.sheetId){showToast('Not connected','error');return;}
   const toImport=importRows.filter(r=>r.status!=='duplicate'&&r.status!=='skip');
