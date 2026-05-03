@@ -349,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.04</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.05</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.04</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.05</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -1232,7 +1232,7 @@ async function refreshData(){
   if(!accessToken||!settings.sheetId){showToast('Not connected to Google','error');return;}
   document.getElementById('refresh-btn').innerHTML='<div class="spinner" style="width:14px;height:14px;border-width:2px"></div>';
   try{
-    const data=await batchGetSheets(['Spending!A:J','Income!A:H','Rules!A:D','Categories!A:B','Net Worth!A1:ZZ200']);
+    const data=await batchGetSheets(['Spending!A:I','Income!A:H','Rules!A:D','Categories!A:B','Net Worth!A1:ZZ200']);
     const[sp,inc,rules,cats,nw]=data.valueRanges;
     cache.spending=parseRows(sp?.values,[]);
     cache.income=parseRows(inc?.values,[]);
@@ -1876,7 +1876,7 @@ async function logContribution(){
   const spendRow=makeSpendRow(date,'',type,type,'S & I',amount,'contribution-derived');
   try{
     await appendSpendRows([spendRow]);
-    cache.spending.push({Date:date,Description:type,'Clean Name':type,Category:type,Bucket:'S & I',Amount:String(amount),Month:date.slice(0,7),Source:'contribution-derived'});
+    cache.spending.push({Date:date,Description:type,'Clean Name':type,Category:type,Bucket:'S & I',Amount:String(amount),Source:'contribution-derived'});
     showToast('Contribution logged ✓');
     document.getElementById('contrib-amount').value='';document.getElementById('contrib-notes').value='';
     renderSpending();
@@ -1884,11 +1884,11 @@ async function logContribution(){
 }
 
 function makeSpendRow(date,acct,desc,cat,bucket,amt,source){
-  const cleanName=desc,month=date.slice(0,7);
+  const cleanName=desc;
   const hash=simpleHash(`${date}|${amt}|${desc}|${source}`);
-  return[date,acct||'',desc,cleanName,cat,bucket,amt,month,source,hash];
+  return[date,acct||'',desc,cleanName,cat,bucket,amt,source,hash];
 }
-async function appendSpendRows(rows){return sheetsPost(`values/Spending!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,{values:rows});}
+async function appendSpendRows(rows){return sheetsPost(`values/Spending!A:I:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,{values:rows});}
 
 // ═══════════════════════════════════════════════════
 // TRENDS
@@ -2465,7 +2465,21 @@ function processCapitalOneCsv(data){
   const existingHashes=new Set(cache.spending.map(r=>r['Dedup Hash']).filter(Boolean));
   importRows=[];
   for(const row of data){
-    const date=(row['Transaction Date']||row['Posted Date']||'').trim();
+    const rawDate=(row['Transaction Date']||row['Posted Date']||'').trim();
+    // Handle Excel serial dates (e.g. 46060) and M/D/YYYY format
+    let date='';
+    if(/^\d{5}$/.test(rawDate)){
+      // Excel serial date: days since 1899-12-30 (Excel's epoch with leap year bug)
+      const excelEpoch=new Date(1899,11,30);
+      const d=new Date(excelEpoch.getTime()+parseInt(rawDate)*86400000);
+      date=d.toISOString().slice(0,10);
+    } else if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(rawDate)){
+      // M/D/YYYY → YYYY-MM-DD
+      const[m,dy,yr]=rawDate.split('/');
+      date=`${yr}-${m.padStart(2,'0')}-${dy.padStart(2,'0')}`;
+    } else {
+      date=rawDate;
+    }
     const rawDesc=(row['Description']||'').trim();
     const debitVal=parseAmount(row['Debit']),creditVal=parseAmount(row['Credit']);
     const isCredit=creditVal>0&&!debitVal;
@@ -2531,10 +2545,10 @@ function updateImportSummary(){const total=importRows.filter(r=>r.status!=='skip
 async function approveImport(){
   if(!accessToken||!settings.sheetId){showToast('Not connected','error');return;}
   const toImport=importRows.filter(r=>r.status!=='duplicate'&&r.status!=='skip');
-  const rows=toImport.map(r=>makeSpendRow(r.date,'Capital One',r.rawDesc,r.category,r.bucket,r.amount,'csv-import').map((v,i)=>i===9?r.hash:v));
+  const rows=toImport.map(r=>makeSpendRow(r.date,'Capital One',r.rawDesc,r.category,r.bucket,r.amount,'csv-import').map((v,i)=>i===8?r.hash:v));
   try{
     await appendSpendRows(rows);
-    toImport.forEach(r=>{cache.spending.push({Date:r.date,Account:'Capital One',Description:r.rawDesc,'Clean Name':r.cleanName,Category:r.category,Bucket:r.bucket,Amount:String(r.amount),Month:r.date.slice(0,7),Source:'csv-import','Dedup Hash':r.hash});});
+    toImport.forEach(r=>{cache.spending.push({Date:r.date,Account:'Capital One',Description:r.rawDesc,'Clean Name':r.cleanName,Category:r.category,Bucket:r.bucket,Amount:String(r.amount),Source:'csv-import','Dedup Hash':r.hash});});
     showToast(`✓ Imported ${toImport.length} transactions`);closeImportModal();
   }catch(e){showToast('Import failed: '+e.message,'error');}
 }
@@ -2579,7 +2593,7 @@ async function initSheet(){
     const toCreate=['Spending','Income','Rules','Categories'].filter(t=>!existing.includes(t));
     if(toCreate.length)await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}:batchUpdate`,{method:'POST',headers:sheetsHeaders(),body:JSON.stringify({requests:toCreate.map(t=>({addSheet:{properties:{title:t}}}))})});
     const seeds={
-      'Spending':[['Date','Account','Description','Clean Name','Category','Bucket','Amount','Month','Source','Dedup Hash']],
+      'Spending':[['Date','Account','Description','Clean Name','Category','Bucket','Amount','Source','Dedup Hash']],
       'Income':[['Date','Source','Gross','Taxes','Net','401k','ESPP','Notes']],
       'Rules':[['Match Pattern','Clean Name','Category','Type'],['WENDYS',"Wendy's",'Dining Out','Hard'],['STARBUCKS','Starbucks','Dining Out','Hard'],['KROGER','Kroger','Groceries','Hard'],['SHELL OIL','Shell','Transportation','Hard'],['CAPITAL ONE MOBILE PYMT','CC Payment','Transfer','Hard'],['WM SUPERCENTER','Walmart','Groceries','Hard'],['CHICK FIL A','Chick-fil-A','Dining Out','Hard'],['CAVA','CAVA','Dining Out','Hard'],['CVS','CVS Pharmacy','Health','Hard'],['GREAT CLIPS','Great Clips','Health','Hard']],
       'Categories':[['Category','Bucket'],['Rent','Fixed'],['Utilities','Fixed'],['Insurance','Fixed'],['Phone','Fixed'],['Student Loans','Fixed'],['Subscriptions','Fixed'],['Groceries','Variable'],['Transportation','Variable'],['Health','Variable'],['401(k)','S & I'],['Roth IRA','S & I'],['ESPP','S & I'],['Brokerage','S & I'],['Savings','S & I'],['Giving','S & I'],['Dining Out','Discretionary'],['Entertainment','Discretionary'],['Shopping','Discretionary'],['Travel','Discretionary'],['Miscellaneous','Discretionary'],['Transfer','Transfer']]
@@ -2698,9 +2712,18 @@ async function initializeSession(){
     accessToken=cached;
     try{
       const test=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}});
-      if(test.ok){const user=await test.json();settings.userEmail=user.email||'';saveAppSettings();applySettings();switchTab(settings.defaultTab||'dashboard');refreshData();return;}
-    }catch(e){}
-    accessToken=null;sessionStorage.removeItem('cf_token');
+      if(test.ok){
+        const user=await test.json();
+        settings.userEmail=user.email||'';
+        saveAppSettings();applySettings();
+        switchTab(settings.defaultTab||'dashboard');
+        refreshData();
+        return;
+      }
+      // 401 = token expired — fall through to silent re-auth (not an error)
+    }catch(e){/* network error — fall through */}
+    accessToken=null;
+    sessionStorage.removeItem('cf_token');
   }
   accessToken=null;applySettings();
   switchTab(settings.defaultTab||'dashboard');
