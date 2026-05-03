@@ -349,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.7</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.8</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.7</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.8</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -1205,9 +1205,8 @@ async function refreshData(){
   if(!accessToken||!settings.sheetId){showToast('Not connected to Google','error');return;}
   document.getElementById('refresh-btn').innerHTML='<div class="spinner" style="width:14px;height:14px;border-width:2px"></div>';
   try{
-    const data=await batchGetSheets(['Spending!A:J','Income!A:H','Rules!A:C','Categories!A:B','Net Worth!A1:ZZ200','Data!A:D']);
-    const[sp,inc,rules,cats,nw,dataSheet]=data.valueRanges;
-    applyDataSheet(dataSheet?.values||[]);
+    const data=await batchGetSheets(['Spending!A:J','Income!A:H','Rules!A:C','Categories!A:B','Net Worth!A1:ZZ200']);
+    const[sp,inc,rules,cats,nw]=data.valueRanges;
     cache.spending=parseRows(sp?.values,[]);
     cache.income=parseRows(inc?.values,[]);
     cache.rules=parseRows(rules?.values,[]);
@@ -1215,6 +1214,19 @@ async function refreshData(){
     cache.netWorthRaw=nw?.values||[];
     cache.lastFetch=new Date();
     processNetWorth();
+    // Fetch Data tab separately so a bad tab name never breaks the main load
+    try{
+      const dataResp=await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${settings.sheetId}/values/${encodeURIComponent('Data!A:D')}`,
+        {headers:sheetsHeaders()}
+      );
+      if(dataResp.ok){
+        const dataJson=await dataResp.json();
+        applyDataSheet(dataJson.values||[]);
+      }else{
+        console.warn('Data tab fetch:',dataResp.status,dataResp.statusText);
+      }
+    }catch(e2){console.warn('Data tab error:',e2.message);}
     showToast('Data refreshed');
     const active=document.querySelector('.nav-item.active')?.dataset.tab;
     if(active==='dashboard')renderDashboard();
