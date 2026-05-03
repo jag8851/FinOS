@@ -349,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.8</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v3.9</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.8</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v3.9</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -1282,7 +1282,12 @@ function processNetWorth(){
     const res={};
     months.forEach(m=>{
       const ci=monthColMap[m];
-      if(ci!==undefined)res[m]=parseAmount(r[ci]);
+      if(ci===undefined)return;
+      const raw=r[ci];
+      // Only store if cell actually has content — skip empty/missing cells
+      if(raw===undefined||raw===null||String(raw).trim()==='')return;
+      const v=parseAmount(raw);
+      if(!isNaN(v))res[m]=v;
     });
     return res;
   }
@@ -1328,10 +1333,13 @@ function renderNetWorthUI(){
   document.getElementById('home-data').style.display='block';
   document.getElementById('home-empty').style.display='none';
   // Find last month that actually has Net Worth data (not just a header)
-  let lastMonth=nw.months[nw.months.length-1];
+  // Find last month that has an actual Net Worth value (not undefined/missing)
+  let lastMonth=null;
   for(let i=nw.months.length-1;i>=0;i--){
-    if(nw.netWorth[nw.months[i]]){lastMonth=nw.months[i];break;}
+    const m=nw.months[i];
+    if(nw.netWorth[m]!==undefined){lastMonth=m;break;}
   }
+  if(!lastMonth){showEmptyHome('Net Worth data found but no values could be read. Check your sheet.');return;}
   const latestNW=nw.netWorth[lastMonth]||0;
   const latestAssets=nw.assets[lastMonth]||0;
   const latestLiab=nw.liabilities[lastMonth]||0;
@@ -1384,7 +1392,12 @@ function drawNWChart(){
 
 function drawAssetDonut(){
   const nw=cache.netWorth;if(!nw||!nw.months.length)return;
-  const last=nw.months[nw.months.length-1];
+  // Find last month with actual Net Worth data
+  let last=null;
+  for(let i=nw.months.length-1;i>=0;i--){
+    if(nw.netWorth[nw.months[i]]!==undefined){last=nw.months[i];break;}
+  }
+  if(!last)return;
   const lastColIdx=nw.monthColMap?nw.monthColMap[last]:nw.allHeaders.indexOf(last);
   const labelCol=nw.labelColIdx||0;
   const rows=nw.allRows;
@@ -1467,8 +1480,10 @@ function renderDashboard(){
   const nw=cache.netWorth;
   const nwEl=document.getElementById('dash-nw-snapshot');
   if(nw&&nw.months.length){
-    const last=nw.months[nw.months.length-1];
-    const nwVal=nw.netWorth[last]||0,assetsVal=nw.assets[last]||0,liabVal=nw.liabilities[last]||0;
+    let last=null;
+    for(let i=nw.months.length-1;i>=0;i--){if(nw.netWorth[nw.months[i]]!==undefined){last=nw.months[i];break;}}
+    if(!last){document.getElementById('dash-nw-snapshot').innerHTML='<p style="color:var(--text3);font-size:0.82rem">No net worth data found.</p>';}
+    const nwVal=last?nw.netWorth[last]||0:0,assetsVal=last?nw.assets[last]||0:0,liabVal=last?nw.liabilities[last]||0:0;
     nwEl.innerHTML=`
       <div style="display:flex;flex-direction:column;gap:10px">
         ${nwSnapshotRow('Net Worth',fmt(nwVal),'var(--accent)')}
@@ -2444,8 +2459,8 @@ function updateDevRefMap(){
     const rowIdx=rowArr?nw.allRows.indexOf(rowArr)+2:'?'; // +2 for 1-index + header row
     const cell=rowArr?`${colLetter(nw.labelColIdx)}${rowIdx}`:'not found';
     // find last month with actual data for this label
-    let devLast=last;
-    if(vals){for(let i=nw.months.length-1;i>=0;i--){if(nw.months[i]&&vals[nw.months[i]]){devLast=nw.months[i];break;}}}
+    let devLast=null;
+    if(vals){for(let i=nw.months.length-1;i>=0;i--){if(vals[nw.months[i]]!==undefined){devLast=nw.months[i];break;}}}
     const latestVal=vals&&devLast&&vals[devLast]?fmt(vals[devLast]):'$0.00 (no data)';
     lines.push(`${lbl.padEnd(17)}| ${cell.padEnd(6)}| ${latestVal}`);
   });
