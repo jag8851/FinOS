@@ -349,7 +349,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.05</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.06</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +471,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.05</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.06</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -706,8 +706,37 @@ tbody td.primary{color:var(--text);font-weight:500;}
         <div class="card">
           <div class="card-header"><span class="card-title">Paycheck History</span></div>
           <div class="table-wrap">
-            <table><thead><tr><th>Date</th><th>Source</th><th style="text-align:right">Gross</th><th style="text-align:right">Taxes</th><th style="text-align:right">Net</th><th style="text-align:right">401k</th><th style="text-align:right">ESPP</th></tr></thead>
+            <table><thead><tr><th>Date</th><th>Source</th><th style="text-align:right">Gross</th><th style="text-align:right">Taxes</th><th style="text-align:right">Net</th><th style="text-align:right">401k</th><th style="text-align:right">ESPP</th><th></th></tr></thead>
             <tbody id="income-tbody"></tbody></table>
+          </div>
+        </div>
+        <!-- Edit income modal -->
+        <div class="modal-backdrop" id="income-edit-modal">
+          <div class="modal" style="max-width:480px">
+            <div class="modal-header">
+              <span class="modal-title">Edit Paycheck</span>
+              <button class="modal-close" onclick="closeIncomeEdit()">✕</button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="income-edit-row-idx">
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="income-edit-date"></div>
+                <div class="form-group"><label class="form-label">Source</label><input type="text" class="form-input" id="income-edit-source"></div>
+                <div class="form-group"><label class="form-label">Gross ($)</label><input type="number" class="form-input" id="income-edit-gross" oninput="updateEditNet()"></div>
+                <div class="form-group"><label class="form-label">Taxes ($)</label><input type="number" class="form-input" id="income-edit-taxes" oninput="updateEditNet()"></div>
+                <div class="form-group"><label class="form-label">401k ($)</label><input type="number" class="form-input" id="income-edit-401k"></div>
+                <div class="form-group"><label class="form-label">ESPP ($)</label><input type="number" class="form-input" id="income-edit-espp"></div>
+                <div class="form-group"><label class="form-label">Net</label>
+                  <div id="income-edit-net-display" style="padding:9px 12px;background:var(--accent-lt);border:1px solid var(--accent);border-radius:var(--radius-xs);font-family:'DM Mono',monospace;color:var(--accent)">$0.00</div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-danger" onclick="deleteIncomeRow()">Delete</button>
+              <div style="flex:1"></div>
+              <button class="btn btn-secondary" onclick="closeIncomeEdit()">Cancel</button>
+              <button class="btn btn-primary" onclick="saveIncomeEdit()">Save</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1830,14 +1859,19 @@ function renderIncome(){
     ${statCard('ESPP',fmt(sumField('ESPP')))}
   `;
   const sorted=[...rows].sort((a,b)=>(b['Date']||'').localeCompare(a['Date']||''));
-  document.getElementById('income-tbody').innerHTML=sorted.map(r=>`<tr>
-    <td class="mono">${r['Date']}</td><td class="primary">${r['Source']}</td>
-    <td style="text-align:right" class="mono">${fmt(parseAmount(r['Gross']))}</td>
-    <td style="text-align:right" class="amount-neg">${fmt(parseAmount(r['Taxes']))}</td>
-    <td style="text-align:right" class="amount-pos">${fmt(parseAmount(r['Net']))}</td>
-    <td style="text-align:right" class="mono">${fmt(parseAmount(r['401k']))}</td>
-    <td style="text-align:right" class="mono">${fmt(parseAmount(r['ESPP']))}</td>
-  </tr>`).join('');
+  // Find actual indices in cache.income for edit/delete
+  document.getElementById('income-tbody').innerHTML=sorted.map(r=>{
+    const cacheIdx=cache.income.indexOf(r);
+    return `<tr>
+      <td class="mono">${r['Date']}</td><td class="primary">${r['Source']}</td>
+      <td style="text-align:right" class="mono">${fmt(parseAmount(r['Gross']))}</td>
+      <td style="text-align:right" class="amount-neg">${fmt(parseAmount(r['Taxes']))}</td>
+      <td style="text-align:right" class="amount-pos">${fmt(parseAmount(r['Net']))}</td>
+      <td style="text-align:right" class="mono">${fmt(parseAmount(r['401k']))}</td>
+      <td style="text-align:right" class="mono">${fmt(parseAmount(r['ESPP']))}</td>
+      <td><button onclick="openIncomeEdit(${cacheIdx})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:0.8rem;padding:2px 6px;border-radius:var(--radius-xs);transition:all 0.15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">✎</button></td>
+    </tr>`;
+  }).join('');
   if(!document.getElementById('paycheck-date').value)document.getElementById('paycheck-date').valueAsDate=new Date();
   if(!document.getElementById('contrib-date').value)document.getElementById('contrib-date').valueAsDate=new Date();
 }
@@ -1889,6 +1923,66 @@ function makeSpendRow(date,acct,desc,cat,bucket,amt,source){
   return[date,acct||'',desc,cleanName,cat,bucket,amt,source,hash];
 }
 async function appendSpendRows(rows){return sheetsPost(`values/Spending!A:I:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,{values:rows});}
+
+// ─── Income edit/delete ──────────────────────────────────────────
+function openIncomeEdit(idx){
+  const r=cache.income[idx]; if(!r)return;
+  document.getElementById('income-edit-row-idx').value=idx;
+  document.getElementById('income-edit-date').value=r['Date']||'';
+  document.getElementById('income-edit-source').value=r['Source']||'';
+  document.getElementById('income-edit-gross').value=parseAmount(r['Gross'])||'';
+  document.getElementById('income-edit-taxes').value=parseAmount(r['Taxes'])||'';
+  document.getElementById('income-edit-401k').value=parseAmount(r['401k'])||'';
+  document.getElementById('income-edit-espp').value=parseAmount(r['ESPP'])||'';
+  updateEditNet();
+  document.getElementById('income-edit-modal').classList.add('open');
+}
+function closeIncomeEdit(){document.getElementById('income-edit-modal').classList.remove('open');}
+function updateEditNet(){
+  const g=parseFloat(document.getElementById('income-edit-gross').value)||0;
+  const t=parseFloat(document.getElementById('income-edit-taxes').value)||0;
+  document.getElementById('income-edit-net-display').textContent=fmt(g-t);
+}
+async function saveIncomeEdit(){
+  if(!accessToken||!settings.sheetId){showToast('Not connected','error');return;}
+  const idx=parseInt(document.getElementById('income-edit-row-idx').value);
+  const date=document.getElementById('income-edit-date').value;
+  const source=document.getElementById('income-edit-source').value.trim();
+  const gross=parseFloat(document.getElementById('income-edit-gross').value)||0;
+  const taxes=parseFloat(document.getElementById('income-edit-taxes').value)||0;
+  const k401=parseFloat(document.getElementById('income-edit-401k').value)||0;
+  const espp=parseFloat(document.getElementById('income-edit-espp').value)||0;
+  const net=gross-taxes;
+  // Update cache
+  cache.income[idx]={...cache.income[idx],Date:date,Source:source,Gross:String(gross),Taxes:String(taxes),Net:String(net),'401k':String(k401),ESPP:String(espp)};
+  // Find sheet row — income starts at row 2 (row 1 = header)
+  // We need to find which sheet row this cache entry corresponds to
+  // Since we fetch all rows in order, cache index + 2 = sheet row
+  const sheetRow=idx+2;
+  try{
+    await sheetsPut(`values/Income!A${sheetRow}:H${sheetRow}?valueInputOption=USER_ENTERED`,
+      {values:[[date,source,gross,taxes,net,k401,espp,'']]});
+    showToast('Paycheck updated ✓');
+    closeIncomeEdit();
+    renderIncome();
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
+async function deleteIncomeRow(){
+  if(!confirm('Delete this paycheck entry?'))return;
+  if(!accessToken||!settings.sheetId){showToast('Not connected','error');return;}
+  const idx=parseInt(document.getElementById('income-edit-row-idx').value);
+  const sheetRow=idx+2;
+  try{
+    // Clear the row in sheets (can't delete rows via Sheets API values endpoint,
+    // so we clear it — user can manually delete blank rows in sheet if needed)
+    await sheetsPut(`values/Income!A${sheetRow}:H${sheetRow}?valueInputOption=USER_ENTERED`,
+      {values:[['','','','','','','','']]});
+    cache.income.splice(idx,1);
+    showToast('Entry deleted ✓');
+    closeIncomeEdit();
+    renderIncome();
+  }catch(e){showToast('Error: '+e.message,'error');}
+}
 
 // ═══════════════════════════════════════════════════
 // TRENDS
@@ -2408,14 +2502,15 @@ function toTitleCase(str){
 
 function matchRule(desc){
   const d=desc.toUpperCase();
-  // First pass: Hard rules (exact substring, highest priority)
+  // First pass: Hard rules — blank Type defaults to Hard
   const hard=cache.rules.find(r=>{
     const type=(r['Type']||'Hard').trim().toLowerCase();
-    if(type!=='hard'&&type!=='')return false;
-    return r['Match Pattern']&&d.includes(r['Match Pattern'].toUpperCase());
+    if(type==='soft'||type==='fuzzy')return false; // skip soft rules
+    if(!r['Match Pattern'])return false;
+    return d.includes(r['Match Pattern'].toUpperCase());
   });
   if(hard)return hard;
-  // Second pass: Soft rules (each word in Match Pattern must appear in desc)
+  // Second pass: Soft rules
   const soft=cache.rules.find(r=>{
     const type=(r['Type']||'').trim().toLowerCase();
     if(type!=='soft'&&type!=='fuzzy')return false;
@@ -2466,19 +2561,25 @@ function processCapitalOneCsv(data){
   importRows=[];
   for(const row of data){
     const rawDate=(row['Transaction Date']||row['Posted Date']||'').trim();
-    // Handle Excel serial dates (e.g. 46060) and M/D/YYYY format
     let date='';
-    if(/^\d{5}$/.test(rawDate)){
-      // Excel serial date: days since 1899-12-30 (Excel's epoch with leap year bug)
-      const excelEpoch=new Date(1899,11,30);
-      const d=new Date(excelEpoch.getTime()+parseInt(rawDate)*86400000);
-      date=d.toISOString().slice(0,10);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(rawDate)){
+      // Already ISO format YYYY-MM-DD — use as-is
+      date=rawDate;
     } else if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(rawDate)){
       // M/D/YYYY → YYYY-MM-DD
       const[m,dy,yr]=rawDate.split('/');
       date=`${yr}-${m.padStart(2,'0')}-${dy.padStart(2,'0')}`;
+    } else if(/^\d{4,5}$/.test(rawDate)){
+      // Excel serial date — days since 1899-12-30
+      const excelEpoch=new Date(1899,11,30);
+      const d=new Date(excelEpoch.getTime()+parseInt(rawDate)*86400000);
+      date=d.toISOString().slice(0,10);
+    } else if(/^\d{1,2}-\d{1,2}-\d{4}$/.test(rawDate)){
+      // M-D-YYYY → YYYY-MM-DD
+      const[m,dy,yr]=rawDate.split('-');
+      date=`${yr}-${m.padStart(2,'0')}-${dy.padStart(2,'0')}`;
     } else {
-      date=rawDate;
+      date=rawDate; // fallback
     }
     const rawDesc=(row['Description']||'').trim();
     const debitVal=parseAmount(row['Debit']),creditVal=parseAmount(row['Credit']);
@@ -2540,7 +2641,11 @@ function renderImportPreview(){
   updateImportSummary();
 }
 function setImportRowCategory(i,cat){importRows[i].category=cat;importRows[i].bucket=getBucket(cat);if(cat)importRows[i].status='matched';if(cat&&importRows[i].rawDesc){const pattern=importRows[i].rawDesc.toUpperCase().slice(0,12);if(confirm(`Save rule: "${pattern}" → ${cat}?`))saveRule(pattern,importRows[i].cleanName,cat);}updateImportSummary();}
-async function saveRule(pattern,cleanName,category){if(!accessToken||!settings.sheetId)return;cache.rules.push({'Match Pattern':pattern,'Clean Name':cleanName,'Category':category});await sheetsPost(`values/Rules!A:C:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,{values:[[pattern,cleanName,category]]});}
+async function saveRule(pattern,cleanName,category,type='Hard'){
+  if(!accessToken||!settings.sheetId)return;
+  cache.rules.push({'Match Pattern':pattern,'Clean Name':cleanName,'Category':category,'Type':type});
+  await sheetsPost(`values/Rules!A:D:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,{values:[[pattern,cleanName,category,type]]});
+}
 function updateImportSummary(){const total=importRows.filter(r=>r.status!=='skip').length;const newRows=importRows.filter(r=>r.status!=='duplicate'&&r.status!=='skip');const dups=importRows.filter(r=>r.status==='duplicate').length;const needReview=importRows.filter(r=>r.status==='unknown').length;const suggested=importRows.filter(r=>r.status==='suggested').length;const s=`<strong>${newRows.length}</strong> new · <strong>${dups}</strong> duplicates · <strong style="color:var(--accent2)">${suggested}</strong> suggested · <strong style="color:${needReview>0?'var(--danger)':'inherit'}">${needReview}</strong> unmatched`;document.getElementById('import-summary').innerHTML=s;document.getElementById('import-footer-summary').innerHTML=s;document.getElementById('import-approve-btn').disabled=needReview>0||newRows.length===0;}
 async function approveImport(){
   if(!accessToken||!settings.sheetId){showToast('Not connected','error');return;}
