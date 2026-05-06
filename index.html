@@ -338,6 +338,158 @@ tbody td.primary{color:var(--text);font-weight:500;}
 @media(max-width:900px){.fire-layout{grid-template-columns:1fr;}}
 
 .inline-select{background:var(--surface2);border:1px solid var(--accent);border-radius:var(--radius-xs);color:var(--text);font-size:0.78rem;padding:3px 6px;outline:none;font-family:'DM Sans',sans-serif;}
+
+/* ── DASHBOARD HERO ─────────────────────────────────────── */
+.dash-hero{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:28px 32px;
+  margin-bottom:20px;
+  box-shadow:var(--shadow);
+  position:relative;
+  overflow:hidden;
+}
+.dash-hero::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  border-radius:var(--radius) var(--radius) 0 0;
+}
+.dash-hero-label{
+  font-size:0.65rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.14em;color:var(--text3);
+  font-family:'DM Mono',monospace;margin-bottom:6px;
+}
+.dash-hero-value{
+  font-family:'Syne',sans-serif;font-size:2.8rem;font-weight:700;
+  color:var(--text);line-height:1;margin-bottom:4px;
+}
+.dash-hero-change{
+  font-size:0.78rem;font-family:'DM Mono',monospace;
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:100px;margin-bottom:16px;
+}
+.dash-hero-change.pos{background:var(--accent-lt);color:var(--accent);}
+.dash-hero-change.neg{background:#ffebee;color:var(--danger);}
+[data-theme="dark"] .dash-hero-change.neg{background:#2d0b0b;color:#f87171;}
+.dash-hero-meta{
+  display:flex;gap:28px;flex-wrap:wrap;
+  padding-top:16px;
+  border-top:1px solid var(--border);
+}
+.dash-hero-meta-item{display:flex;flex-direction:column;gap:3px;}
+.dash-hero-meta-label{font-size:0.6rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text3);font-family:'DM Mono',monospace;}
+.dash-hero-meta-value{font-family:'DM Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text2);}
+.dash-hero-meta-value.accent{color:var(--accent);}
+.dash-hero-meta-value.danger{color:var(--danger);}
+.dash-hero-meta-value.blue{color:var(--accent2);}
+
+/* ── DASHBOARD INCOME/SPEND PANEL ───────────────────────── */
+.dash-panel-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;
+}
+.dash-panel{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);
+}
+.dash-panel-title{
+  font-size:0.62rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.12em;color:var(--text3);font-family:'DM Mono',monospace;
+  margin-bottom:14px;
+}
+.dash-panel-main{
+  font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:700;
+  color:var(--text);line-height:1;margin-bottom:12px;
+}
+.dash-panel-breakdown{display:flex;flex-direction:column;gap:8px;}
+.dash-breakdown-row{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:0.78rem;
+}
+.dash-breakdown-label{display:flex;align-items:center;gap:7px;color:var(--text2);}
+.dash-breakdown-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.dash-breakdown-val{font-family:'DM Mono',monospace;color:var(--text);font-size:0.82rem;}
+/* Stacked spend bar */
+.dash-spend-bar{
+  height:5px;border-radius:3px;overflow:hidden;
+  display:flex;gap:1px;margin-bottom:12px;
+  background:var(--surface2);
+}
+.dash-spend-bar-seg{height:100%;transition:width 0.4s;}
+
+/* ── RATE STRIP ─────────────────────────────────────────── */
+.dash-rate-strip{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:0;margin-bottom:20px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;
+}
+.dash-rate-item{
+  padding:16px 18px;
+  border-right:1px solid var(--border);
+}
+.dash-rate-item:last-child{border-right:none;}
+.dash-rate-label{
+  font-size:0.6rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.12em;color:var(--text3);font-family:'DM Mono',monospace;
+  margin-bottom:6px;
+}
+.dash-rate-main{font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:500;color:var(--accent);}
+.dash-rate-pct{font-size:0.72rem;color:var(--text3);margin-top:2px;}
+.dash-rate-pct span{color:var(--text2);}
+
+/* ── DASH LOWER ROW ─────────────────────────────────────── */
+.dash-lower-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+/* ── NET WORTH TAB HERO ─────────────────────────────────── */
+.nw-hero{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:28px 32px 24px;
+  margin-bottom:20px;box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+}
+.nw-hero::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  border-radius:var(--radius) var(--radius) 0 0;
+}
+.nw-hero-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
+.nw-hero-left{}
+.nw-hero-label{font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px;}
+.nw-hero-value{font-family:'Syne',sans-serif;font-size:3rem;font-weight:700;color:var(--text);line-height:1;}
+.nw-hero-date{font-size:0.7rem;color:var(--text3);font-family:'DM Mono',monospace;margin-top:6px;}
+.nw-hero-stats{display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;}
+.nw-hero-stat{padding:12px 18px;border-right:1px solid var(--border);min-width:110px;}
+.nw-hero-stat:last-child{border-right:none;}
+.nw-hero-stat-label{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:4px;}
+.nw-hero-stat-val{font-family:'DM Mono',monospace;font-size:0.9rem;font-weight:500;}
+/* Secondary stats as a clean inline strip */
+.nw-secondary-strip{
+  display:flex;gap:0;margin-bottom:20px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);
+}
+.nw-secondary-item{
+  flex:1;padding:14px 18px;border-right:1px solid var(--border);
+}
+.nw-secondary-item:last-child{border-right:none;}
+.nw-secondary-label{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:5px;}
+.nw-secondary-val{font-family:'DM Mono',monospace;font-size:0.92rem;font-weight:500;color:var(--text);}
+
+@media(max-width:768px){
+  .dash-panel-row{grid-template-columns:1fr;}
+  .dash-rate-strip{grid-template-columns:repeat(2,1fr);}
+  .dash-rate-item:nth-child(2){border-right:none;}
+  .dash-rate-item:nth-child(3){border-top:1px solid var(--border);}
+  .dash-lower-row{grid-template-columns:1fr;}
+  .nw-hero-stats{flex-wrap:wrap;}
+  .nw-secondary-strip{flex-wrap:wrap;}
+  .nw-secondary-item{min-width:calc(50% - 1px);}
+  .dash-hero-value{font-size:2.2rem;}
+  .nw-hero-value{font-size:2.2rem;}
+}
 .fire-val-edit{cursor:text;border-radius:3px;padding:1px 4px;transition:background 0.15s;}
 .fire-val-edit:hover{background:var(--surface2);}
 .fire-val-edit:focus{background:var(--surface2);outline:1px solid var(--accent);outline-offset:1px;}
@@ -349,7 +501,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
 <div id="lock-screen">
   <div class="lock-logo">Coastline</div>
   <div class="lock-tagline">Finance</div>
-  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.06</div>
+  <div style="font-size:0.6rem;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;margin-top:-18px">v4.07</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
@@ -471,7 +623,7 @@ tbody td.primary{color:var(--text);font-weight:500;}
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.06</span></div>
+    <div class="header-logo">Coastline <span>Finance</span><span style="font-size:0.58rem;color:var(--text3);font-family:'DM Mono',monospace;font-weight:400;letter-spacing:0.04em;margin-left:8px;vertical-align:middle">v4.07</span></div>
     <div class="header-spacer"></div>
     <div class="header-actions">
       <button class="hbtn" id="refresh-btn" onclick="refreshData()" title="Refresh data">
@@ -549,32 +701,39 @@ tbody td.primary{color:var(--text);font-weight:500;}
             </div>
           </div>
           <div id="dash-data">
-            <!-- Month label & top stats -->
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-              <div>
-                <div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;color:var(--text)" id="dash-month-title">—</div>
-                <div style="font-size:0.72rem;color:var(--text3);font-family:'DM Mono',monospace">at a glance</div>
+            <!-- Hero: Net Worth -->
+            <div class="dash-hero" id="dash-hero-nw">
+              <div class="dash-hero-label" id="dash-month-title">—</div>
+              <div class="dash-hero-value" id="dash-hero-nw-val">—</div>
+              <div class="dash-hero-change" id="dash-hero-nw-change" style="display:none"></div>
+              <div class="dash-hero-meta" id="dash-hero-meta"></div>
+            </div>
+            <!-- Income + Spending panels -->
+            <div class="dash-panel-row">
+              <div class="dash-panel">
+                <div class="dash-panel-title">Income · <span id="dash-panel-month">—</span></div>
+                <div class="dash-panel-main" id="dash-income-main">—</div>
+                <div class="dash-panel-breakdown" id="dash-income-breakdown"></div>
+              </div>
+              <div class="dash-panel">
+                <div class="dash-panel-title">Spending · <span id="dash-panel-month2">—</span></div>
+                <div class="dash-panel-main" id="dash-spend-main">—</div>
+                <div class="dash-spend-bar" id="dash-spend-bar"></div>
+                <div class="dash-panel-breakdown" id="dash-spend-breakdown"></div>
               </div>
             </div>
-            <!-- Income summary -->
-            <div class="dash-section-title">Income</div>
-            <div class="stats-grid" id="dash-income-stats" style="margin-bottom:20px"></div>
-            <!-- Spending summary -->
-            <div class="dash-section-title">Spending</div>
-            <div class="stats-grid" id="dash-spend-stats" style="margin-bottom:20px"></div>
-            <!-- Savings & Investing rates -->
-            <div class="dash-section-title">Savings &amp; Investing Rates</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:20px" id="dash-rate-cards"></div>
-            <!-- Quick charts -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px" id="dash-charts-row">
+            <!-- Rate strip -->
+            <div class="dash-rate-strip" id="dash-rate-strip"></div>
+            <!-- Lower: donut + NW detail -->
+            <div class="dash-lower-row" style="margin-top:20px">
               <div class="card">
                 <div class="card-header"><span class="card-title">Spending by Bucket</span></div>
                 <div class="card-body">
-                  <div class="chart-container" style="height:180px"><canvas id="dash-bucket-donut"></canvas></div>
+                  <div class="chart-container" style="height:200px"><canvas id="dash-bucket-donut"></canvas></div>
                 </div>
               </div>
               <div class="card">
-                <div class="card-header"><span class="card-title">Net Worth Snapshot</span></div>
+                <div class="card-header"><span class="card-title">Wealth Breakdown</span></div>
                 <div class="card-body" id="dash-nw-snapshot"></div>
               </div>
             </div>
@@ -872,8 +1031,20 @@ tbody td.primary{color:var(--text);font-weight:500;}
             <div class="spinner"></div><span>Loading net worth data…</span>
           </div>
           <div id="home-data" style="display:none">
-            <div class="stats-grid" id="nw-stats"></div>
-            <div class="stats-grid" id="nw-stats2" style="margin-bottom:20px"></div>
+            <!-- Hero stat -->
+            <div class="nw-hero" id="nw-hero-block">
+              <div class="nw-hero-top">
+                <div class="nw-hero-left">
+                  <div class="nw-hero-label">Net Worth</div>
+                  <div class="nw-hero-value" id="nw-hero-val">—</div>
+                  <div class="nw-hero-date" id="nw-hero-date"></div>
+                </div>
+                <div class="nw-hero-stats" id="nw-hero-stats"></div>
+              </div>
+            </div>
+            <!-- Secondary strip: savings, taxable, tax-deferred, tax-free -->
+            <div class="nw-secondary-strip" id="nw-secondary-strip" style="margin-bottom:20px"></div>
+            <!-- Chart -->
             <div class="card" style="margin-bottom:20px">
               <div class="card-header">
                 <span class="card-title">Net Worth Over Time</span>
@@ -889,8 +1060,9 @@ tbody td.primary{color:var(--text);font-weight:500;}
                 <div class="chart-legend" id="nw-legend"></div>
               </div>
             </div>
+            <!-- Asset allocation -->
             <div class="card">
-              <div class="card-header"><span class="card-title">Current Asset Allocation</span></div>
+              <div class="card-header"><span class="card-title">Asset Allocation</span></div>
               <div class="card-body">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center">
                   <div class="chart-container" style="height:200px"><canvas id="asset-donut"></canvas></div>
@@ -1407,14 +1579,11 @@ function renderNetWorthUI(){
   if(!nw||!nw.months.length){showEmptyHome('No Net Worth data found. Check your Google Sheet has a "Net Worth" tab with YYYY-MM column headers.');return;}
   document.getElementById('home-data').style.display='block';
   document.getElementById('home-empty').style.display='none';
-  // Find last month that actually has Net Worth data (not just a header)
-  // Find last month that has an actual Net Worth value (not undefined/missing)
+
   let lastMonth=null;
-  for(let i=nw.months.length-1;i>=0;i--){
-    const m=nw.months[i];
-    if(nw.netWorth[m]!==undefined){lastMonth=m;break;}
-  }
+  for(let i=nw.months.length-1;i>=0;i--){if(nw.netWorth[nw.months[i]]!==undefined){lastMonth=nw.months[i];break;}}
   if(!lastMonth){showEmptyHome('Net Worth data found but no values could be read. Check your sheet.');return;}
+
   const latestNW=nw.netWorth[lastMonth]||0;
   const latestAssets=nw.assets[lastMonth]||0;
   const latestLiab=nw.liabilities[lastMonth]||0;
@@ -1424,19 +1593,30 @@ function renderNetWorthUI(){
   const latestTD=nw.taxDeferred[lastMonth]||0;
   const latestTF=nw.taxFree[lastMonth]||0;
   const age=ageFromBirthday(settings.birthday);
-  document.getElementById('nw-stats').innerHTML=`
-    ${statCard('Net Worth',fmt(latestNW),latestNW>=0?'accent':'danger')}
-    ${statCard('Assets',fmt(latestAssets),'blue')}
-    ${statCard('Liabilities',fmt(latestLiab),'danger')}
-    ${statCard('Investments',fmt(latestInv),'accent')}
-  `;
-  document.getElementById('nw-stats2').innerHTML=`
-    ${statCard('Savings',fmt(latestSav))}
-    ${statCard('Taxable',fmt(latestTaxable))}
-    ${statCard('Tax-Deferred',fmt(latestTD))}
-    ${statCard('Tax-Free',fmt(latestTF))}
-    ${age!==null?statCard('Age',String(age)):''}
-  `;
+
+  // Hero block
+  document.getElementById('nw-hero-val').textContent=fmt(latestNW);
+  document.getElementById('nw-hero-date').textContent='as of '+lastMonth+(age!==null?' · Age '+age:'');
+  document.getElementById('nw-hero-stats').innerHTML=[
+    {lb:'Assets',val:fmt(latestAssets),col:'var(--accent2)'},
+    {lb:'Liabilities',val:fmt(latestLiab),col:'var(--danger)'},
+    {lb:'Investments',val:fmt(latestInv),col:'var(--accent)'},
+  ].map(s=>`<div class="nw-hero-stat">
+    <div class="nw-hero-stat-label">${s.lb}</div>
+    <div class="nw-hero-stat-val" style="color:${s.col}">${s.val}</div>
+  </div>`).join('');
+
+  // Secondary strip
+  document.getElementById('nw-secondary-strip').innerHTML=[
+    {lb:'Savings',val:fmt(latestSav)},
+    {lb:'Taxable',val:fmt(latestTaxable)||'—'},
+    {lb:'Tax-Deferred',val:fmt(latestTD)||'—'},
+    {lb:'Tax-Free',val:fmt(latestTF)||'—'},
+  ].map(s=>`<div class="nw-secondary-item">
+    <div class="nw-secondary-label">${s.lb}</div>
+    <div class="nw-secondary-val">${s.val}</div>
+  </div>`).join('');
+
   drawNWChart();drawAssetDonut();
 }
 
@@ -1564,60 +1744,136 @@ let dashBucketDonutInst=null;
 function renderDashboard(){
   const now=new Date();
   const thisM=getMonthStr(now);
-  document.getElementById('dash-month-title').textContent=fmtMonth(thisM);
-  // If no data yet and we're connected, trigger a load
+  const monthLabel=fmtMonth(thisM);
   if(!cache.lastFetch&&accessToken&&settings.sheetId){refreshData();return;}
-  // Income this month
+
+  // ── NW Hero ────────────────────────────────────────────────────
+  const nw=cache.netWorth;
+  let nwLast=null,nwVal=0,prevNwVal=0;
+  if(nw&&nw.months.length){
+    for(let i=nw.months.length-1;i>=0;i--){if(nw.netWorth[nw.months[i]]!==undefined){nwLast=nw.months[i];break;}}
+    if(nwLast){
+      nwVal=nw.netWorth[nwLast]||0;
+      // Previous month
+      const li=nw.months.indexOf(nwLast);
+      if(li>0){const pm=nw.months[li-1];prevNwVal=nw.netWorth[pm]||0;}
+    }
+  }
+  document.getElementById('dash-month-title').textContent=monthLabel+' · at a glance';
+  document.getElementById('dash-hero-nw-val').textContent=nwLast?fmt(nwVal):'—';
+
+  const changeEl=document.getElementById('dash-hero-nw-change');
+  if(nwLast&&prevNwVal){
+    const delta=nwVal-prevNwVal;
+    const pct=(delta/Math.abs(prevNwVal)*100).toFixed(1);
+    changeEl.style.display='inline-flex';
+    changeEl.className='dash-hero-change '+(delta>=0?'pos':'neg');
+    changeEl.textContent=(delta>=0?'↑':'↓')+' '+fmt(Math.abs(delta))+' ('+Math.abs(pct)+'%) vs last month';
+  } else changeEl.style.display='none';
+
+  // Hero meta: assets, liabilities, investments
+  const metaItems=nwLast?[
+    {lb:'Assets',val:fmt(nw.assets[nwLast]||0),cls:'blue'},
+    {lb:'Liabilities',val:fmt(nw.liabilities[nwLast]||0),cls:'danger'},
+    {lb:'Investments',val:fmt(nw.investments[nwLast]||0),cls:'accent'},
+    {lb:'Savings',val:fmt(nw.savings[nwLast]||0),cls:''},
+  ]:[];
+  document.getElementById('dash-hero-meta').innerHTML=metaItems.map(m=>
+    `<div class="dash-hero-meta-item">
+      <div class="dash-hero-meta-label">${m.lb}</div>
+      <div class="dash-hero-meta-value ${m.cls}">${m.val}</div>
+    </div>`
+  ).join('');
+
+  // ── Income panel ────────────────────────────────────────────────
   const incThisM=cache.income.filter(r=>r['Date']?.startsWith(thisM));
   const gross=incThisM.reduce((s,r)=>s+parseAmount(r['Gross']),0);
   const taxes=incThisM.reduce((s,r)=>s+parseAmount(r['Taxes']),0);
   const net=incThisM.reduce((s,r)=>s+parseAmount(r['Net']),0);
-  document.getElementById('dash-income-stats').innerHTML=`
-    ${statCard('Gross Income',fmt(gross),'blue')}
-    ${statCard('Taxes',fmt(taxes),'danger')}
-    ${statCard('Net Income',fmt(net),'accent')}
-  `;
-  // Spending this month
+  const k401=incThisM.reduce((s,r)=>s+parseAmount(r['401k']),0);
+  document.getElementById('dash-panel-month').textContent=monthLabel;
+  document.getElementById('dash-panel-month2').textContent=monthLabel;
+  document.getElementById('dash-income-main').textContent=fmt(gross);
+  document.getElementById('dash-income-breakdown').innerHTML=[
+    {dot:'var(--accent2)',lb:'Net Pay',val:fmt(net)},
+    {dot:'var(--danger)',lb:'Taxes',val:fmt(taxes)},
+    {dot:'var(--accent)',lb:'401k',val:fmt(k401)},
+  ].map(r=>`<div class="dash-breakdown-row">
+    <div class="dash-breakdown-label"><div class="dash-breakdown-dot" style="background:${r.dot}"></div>${r.lb}</div>
+    <div class="dash-breakdown-val">${r.val}</div>
+  </div>`).join('');
+
+  // ── Spending panel ──────────────────────────────────────────────
   const spThisM=cache.spending.filter(r=>r['Date']?.startsWith(thisM)&&r['Bucket']!=='Transfer');
   const totalSpend=spThisM.reduce((s,r)=>s+parseAmount(r['Amount']),0);
   const byBucket={};
   spThisM.forEach(r=>{const b=r['Bucket']||'Other';byBucket[b]=(byBucket[b]||0)+parseAmount(r['Amount']);});
-  document.getElementById('dash-spend-stats').innerHTML=`
-    ${statCard('Total Spending',fmt(totalSpend),'accent')}
-    ${statCard('Fixed',fmt(byBucket['Fixed']||0),'blue')}
-    ${statCard('Variable',fmt(byBucket['Variable']||0))}
-    ${statCard('S &amp; I',fmt(byBucket['S & I']||0),'accent')}
-    ${statCard('Discretionary',fmt(byBucket['Discretionary']||0),'danger')}
-  `;
-  // Rate cards
-  renderRateCards('dash-rate-cards',gross,net,spThisM,'month');
-  // Bucket donut
+  document.getElementById('dash-spend-main').textContent=fmt(totalSpend);
+  // Stacked bar
+  const bucketOrder=['Fixed','Variable','S & I','Discretionary'];
+  const barSegs=bucketOrder.filter(b=>byBucket[b]>0).map(b=>{
+    const pct=totalSpend>0?(byBucket[b]/totalSpend*100).toFixed(1):0;
+    return `<div class="dash-spend-bar-seg" style="width:${pct}%;background:${BUCKET_COLORS[b]||'#8fa08f'}"></div>`;
+  }).join('');
+  document.getElementById('dash-spend-bar').innerHTML=barSegs;
+  document.getElementById('dash-spend-breakdown').innerHTML=bucketOrder.filter(b=>byBucket[b]>0).map(b=>`
+    <div class="dash-breakdown-row">
+      <div class="dash-breakdown-label"><div class="dash-breakdown-dot" style="background:${BUCKET_COLORS[b]||'#8fa08f'}"></div>${b}</div>
+      <div class="dash-breakdown-val">${fmt(byBucket[b])}</div>
+    </div>`).join('');
+
+  // ── Rate strip ──────────────────────────────────────────────────
+  const si=spThisM.filter(r=>r['Bucket']==='S & I');
+  let savTotal=0,investTotal=0;
+  si.forEach(r=>{const t=categorizeContrib(String(r['Category']||''));const a=parseAmount(r['Amount']);if(t==='save')savTotal+=a;else investTotal+=a;});
+  const siTotal=savTotal+investTotal;
+  const pctOf=(v,b)=>b>0?(v/b*100).toFixed(1)+'%':'—';
+  document.getElementById('dash-rate-strip').innerHTML=[
+    {lb:'Savings & Debt',main:fmt(savTotal),pct:`${pctOf(savTotal,gross)} gross · ${pctOf(savTotal,net)} net`},
+    {lb:'Invested',main:fmt(investTotal),pct:`${pctOf(investTotal,gross)} gross`},
+    {lb:'Net Invest Rate',main:pctOf(investTotal,net),pct:`${fmt(investTotal)} of net`},
+    {lb:'Total S&I Rate',main:pctOf(siTotal,gross),pct:`${fmt(siTotal)} total`},
+  ].map(r=>`<div class="dash-rate-item">
+    <div class="dash-rate-label">${r.lb}</div>
+    <div class="dash-rate-main">${r.main}</div>
+    <div class="dash-rate-pct">${r.pct}</div>
+  </div>`).join('');
+
+  // ── Bucket donut ────────────────────────────────────────────────
   const buckets=Object.keys(byBucket).filter(b=>byBucket[b]>0);
   if(dashBucketDonutInst)dashBucketDonutInst.destroy();
   if(buckets.length){
     dashBucketDonutInst=new Chart(document.getElementById('dash-bucket-donut'),{
       type:'doughnut',
       data:{labels:buckets,datasets:[{data:buckets.map(b=>byBucket[b]),backgroundColor:buckets.map(b=>BUCKET_COLORS[b]||'#8fa08f'),borderWidth:2,borderColor:getCSSVar('--surface')}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:getCSSVar('--text2'),font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.label}: ${fmt(c.raw)}`}}}}
+      options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{color:getCSSVar('--text2'),font:{size:11},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.label}: ${fmt(c.raw)}`}}}}
     });
   }
-  // NW snapshot
-  const nw=cache.netWorth;
+
+  // ── Wealth breakdown ────────────────────────────────────────────
   const nwEl=document.getElementById('dash-nw-snapshot');
-  if(nw&&nw.months.length){
-    let last=null;
-    for(let i=nw.months.length-1;i>=0;i--){if(nw.netWorth[nw.months[i]]!==undefined){last=nw.months[i];break;}}
-    if(!last){document.getElementById('dash-nw-snapshot').innerHTML='<p style="color:var(--text3);font-size:0.82rem">No net worth data found.</p>';}
-    const nwVal=last?nw.netWorth[last]||0:0,assetsVal=last?nw.assets[last]||0:0,liabVal=last?nw.liabilities[last]||0:0;
-    nwEl.innerHTML=`
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${nwSnapshotRow('Net Worth',fmt(nwVal),'var(--accent)')}
-        ${nwSnapshotRow('Assets',fmt(assetsVal),'var(--accent2)')}
-        ${nwSnapshotRow('Liabilities',fmt(liabVal),'var(--danger)')}
-        ${nwSnapshotRow('Investments',fmt(nw.investments[last]||0),'#ab47bc')}
-        <div style="font-size:0.65rem;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace">as of ${last}</div>
-      </div>`;
-  } else {nwEl.innerHTML='<p style="color:var(--text3);font-size:0.82rem">Connect Net Worth sheet to see snapshot.</p>';}
+  if(nwLast){
+    const items=[
+      {lb:'Net Worth',val:nw.netWorth[nwLast]||0,color:'var(--accent)'},
+      {lb:'Assets',val:nw.assets[nwLast]||0,color:'var(--accent2)'},
+      {lb:'Liabilities',val:nw.liabilities[nwLast]||0,color:'var(--danger)'},
+      {lb:'Investments',val:nw.investments[nwLast]||0,color:'#ab47bc'},
+      {lb:'Savings',val:nw.savings[nwLast]||0,color:'var(--text2)'},
+    ];
+    nwEl.innerHTML=`<div style="display:flex;flex-direction:column;gap:0">
+      ${items.map((it,i)=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;${i<items.length-1?'border-bottom:1px solid var(--border)':''}">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:3px;height:22px;border-radius:2px;background:${it.color};flex-shrink:0"></div>
+            <span style="font-size:0.82rem;color:var(--text2)">${it.lb}</span>
+          </div>
+          <span style="font-family:'DM Mono',monospace;font-size:0.9rem;font-weight:500;color:${it.color}">${fmt(it.val)}</span>
+        </div>`).join('')}
+      <div style="font-size:0.62rem;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace">as of ${nwLast}</div>
+    </div>`;
+  } else {
+    nwEl.innerHTML='<p style="color:var(--text3);font-size:0.82rem">Connect Net Worth sheet to see breakdown.</p>';
+  }
 }
 function nwSnapshotRow(label,val,color){return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:0.8rem;color:var(--text2)">${label}</span><span style="font-family:'DM Mono',monospace;font-size:0.88rem;color:${color}">${val}</span></div>`;}
 
